@@ -1,8 +1,12 @@
 {
   "version": 2,
-  "dgSpecHash": "/M2O8D7B2nI=",
+  "dgSpecHash": "srqCPN8yAjQ=",
   "success": true,
-  "projectFilePath": "D:\\Projects\\IPK\\IPK25CHAT\\IPK25CHAT\\IPK25CHAT.csproj",
-  "expectedPackageFiles": [],
+  "projectFilePath": "/mnt/d/Projects/IPK/IPK25CHAT/IPK25CHAT/IPK25CHAT.csproj",
+  "expectedPackageFiles": [
+    "/home/jonas/.nuget/packages/microsoft.net.illink.tasks/8.0.15/microsoft.net.illink.tasks.8.0.15.nupkg.sha512",
+    "/home/jonas/.nuget/packages/microsoft.netcore.app.runtime.linux-x64/8.0.15/microsoft.netcore.app.runtime.linux-x64.8.0.15.nupkg.sha512",
+    "/home/jonas/.nuget/packages/microsoft.aspnetcore.app.runtime.linux-x64/8.0.15/microsoft.aspnetcore.app.runtime.linux-x64.8.0.15.nupkg.sha512"
+  ],
   "logs": []
 }
