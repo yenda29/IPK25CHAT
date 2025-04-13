@@ -1,0 +1,15 @@
+# Ignore build output directories
+bin/
+obj/
+
+# Ignore published output
+publish/
+
+# Ignore user-specific files
+.vs/
+.vscode/
+*.user
+*.userosscache
+*.suo
+*.swp
+*~
