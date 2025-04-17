@@ -11,7 +11,6 @@ class Program{
 
     
     static async Task Main(string[] args){
-        
         ArgParser parser = new ArgParser();
         ChatOptions options = parser.Parse(args);
 

@@ -2,8 +2,10 @@ using System;
 using System.ComponentModel;
 using System.Linq.Expressions;
 using System.Net;
+using System.Net.Security;
 using System.Net.Sockets;
 using System.Text;
+using System.Xml;
 
 public class TCPClient : TransportClient
 {
@@ -182,7 +184,9 @@ public class TCPClient : TransportClient
                 {
                     string[] content = Messages.MsgMessage(message);
                     try{
-                        await ShowMessage(ConstructErrorMessage(content[1], "Message was received before authentication"));
+                        string output = Messages.Message(content, username);
+                        await ShowMessage(output);
+                        //await ShowMessage(ConstructErrorMessage(content[1], "Message was received before authentication"));
                     }
                     catch(ArgumentException exception)
                     {
@@ -227,7 +231,9 @@ public class TCPClient : TransportClient
                 {
                     string[] content = Messages.MsgMessage(message);
                     try{
-                        await ShowMessage(ConstructErrorMessage(content[1], "Message was received before authentication"));
+                        string output = Messages.Message(content, username);
+                        await ShowMessage(output);
+                        //await ShowMessage(ConstructErrorMessage(content[1], "Message was received before authentication"));
                     }
                     catch(ArgumentException exception)
                     {
@@ -287,6 +293,14 @@ public class TCPClient : TransportClient
         }
         return $"ERR FROM {displayName} IS {content}\r\n";
     }
+    public string ConstructByeMessage(string displayName)
+    {
+        if(displayName.Length > 20)
+        {
+            throw new ArgumentException($"Length of display name: {displayName} is too long, must be less than 20");
+        }
+        return $"BYE FROM {displayName}\r\n";
+    }
     public async Task ShowMessage(string message)
     {
         if (tcpClient == null || !tcpClient.Connected)
@@ -299,11 +313,139 @@ public class TCPClient : TransportClient
         await writer.WriteAsync(message);
         await writer.FlushAsync();
     }
-    public async Task UserCommands(CancellationToken token)
+    public async Task  UserCommands(CancellationToken token)
     {
-        
+        try{
+            while (!token.IsCancellationRequested)
+            {
+                string? input = await Task.Run(() => Console.ReadLine(), token);
+                if(input == null)
+                {
+                    await ShowMessage(ConstructByeMessage(username));
+                    Terminate();
+                    break;
+                }
+                await ProcessCommand(input);
+            }
+        }
+        catch(OperationCanceledException)
+        {
+            await ShowMessage(ConstructByeMessage(username));
+        }
+        catch(Exception exception)
+        {
+            Console.WriteLine($"ERROR: {exception.Message}");
+        }
     }
-    
+    public void CommandsHelp()
+    {
+        Console.WriteLine("Commands:");
+        Console.WriteLine("/help - prints out help");
+        Console.WriteLine("/auth {Username} {Secret} {DisplayName} - Sends AUTH message with the data provided");
+        Console.WriteLine("/join {ChannelID} - Sends JOIN message with channel name");
+        Console.WriteLine("/rename {DisplayName} - Locally changes the display name");
+        Console.WriteLine("/exit - Exits");
+    }
+    public async Task Authenticate(string[] input)
+    {
+        if(state == ClientStates.States.START || state == ClientStates.States.AUTH)
+        {
+            try{
+                string output = Messages.AuthMessage(input);
+                username = input[1];
+                state = ClientStates.States.AUTH;
+                await ShowMessage(output);
+
+            }
+            catch(Exception exception)
+            {
+                Console.WriteLine($"ERROR: {exception.Message}");
+            }
+        }
+        else
+        {
+            Console.WriteLine("ERROR: Already authenticated");
+            return;
+        }
+    }
+    public async Task Join(string[] input)
+    {
+        if(state == ClientStates.States.OPEN)
+        {
+            string output = Messages.JoinMessage(input, username);
+            state = ClientStates.States.JOIN;
+            await ShowMessage(output);
+        }
+        else{
+            Console.WriteLine("ERROR: Can only join from open state");
+            return;
+        }
+    }
+
+    public async Task ProcessCommand(string message)
+    {
+        string[] input = message.Split(" ", StringSplitOptions.RemoveEmptyEntries);
+        if(message == null)
+        {
+            return;
+        }
+        if(message.StartsWith("/"))
+        {
+            if(input[0] == "/help")
+            {
+                CommandsHelp();
+            }
+            else if(input[0] == "/auth")
+            {
+                if(input.Length == 4)
+                {
+                    await Authenticate(input);
+                }
+                else{
+                    Console.WriteLine("ERROR: Invalid params, /help to see needed parameters");
+                }
+            }
+            else if(input[0] == "/join")
+            {
+                if(input.Length == 2)
+                {
+                    await Join(input);
+                }
+                else{
+                    Console.WriteLine("ERROR: Invalid params, /help to see needed parameters");
+                }
+            }
+            else if(input[0] == "/rename")
+            {
+                if(input.Length == 2)
+                {
+                    username = Messages.Rename(input);
+                }
+                else{
+                    Console.WriteLine("ERROR: Invalid params, /help to see needed parameters");
+                }
+            }
+            else if(input[0] == "/exit")
+            {
+                state = ClientStates.States.END;
+                Terminate();
+            }
+            else{
+                Console.WriteLine("ERROR: unknown command, /help to see needed parameters");
+            }
+        }
+        else{
+            if(state == ClientStates.States.OPEN || state == ClientStates.States.JOIN)
+            {
+                string output = Messages.Message(input, username);
+                await ShowMessage(output);
+            }
+            else
+            {
+                Console.WriteLine("ERROR: unknown command, use /help");
+            }
+        }
+    }
     
     public async Task DisconnectAsync()
     {
@@ -314,18 +456,10 @@ public class TCPClient : TransportClient
         stream?.Dispose();
     }
 
-    public async Task ReceiveAsync()
-    {
-        
-    }
-
     public void Terminate()
     {
         cancel.Cancel();
     }
-
-
-
 }
 
 

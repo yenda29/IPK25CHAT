@@ -50,5 +50,59 @@ class Messages
         }
         return new string[] { "UNKNOWN", "", "" };
     }
+
+    public static string AuthMessage(string[] input)
+    {
+        if(input[1].Length > 20 || !UsernameRegex.IsMatch(input[1]))
+        {
+            throw new ArgumentException("ERROR: Length of ID can be max 20 and contain only letters, numbers, hyphens and underscores");
+        }
+        if(input[2].Length > 128 || !SecretRegex.IsMatch(input[2]))
+        {
+            throw new ArgumentException("ERROR: Length of secret can be max 128 and contain only letters, numbers, hyphens and underscores");
+        }
+        if(input[3].Length > 20 || !DisplayNameRegex.IsMatch(input[3]))
+        {
+            throw new ArgumentException("ERROR: Length of display name can be max 20 and contain only printable ASCII characters");
+        }
+        return $"AUTH {input[1]} AS {input[3]} USING {input[2]}\r\n";
+    }
+
+    public static string JoinMessage(string[] input, string username)
+    {
+        if(input[1].Length > 20 || !UsernameRegex.IsMatch(input[1]))
+        {
+            throw new ArgumentException("ERROR: Length of ID can be max 20 and contain only letters, numbers, hyphens and underscores");
+        }
+        return $"JOIN {input[1]} AS {username}\r\n";
+    }
+
+    public static string Rename(string[] input)
+    {
+        if(input[1].Length > 20)
+        {
+            Console.WriteLine("ERROR: Length of display name can be max 20, truncating...");
+            input[1] = input[1].Substring(0, 20);
+        }
+        if(!DisplayNameRegex.IsMatch(input[1]))
+        {
+            throw new ArgumentException("ERROR: Display name can contain only printable ASCII characters");
+        }
+        return input[1];
+    }
+
+    public static string Message(string[] input, string username)
+    {
+        if(username.Length > 20 || !UsernameRegex.IsMatch(username))
+        {
+            throw new ArgumentException("ERROR: Length of display name can be max 20 and contain only printable ASCII characters");
+        }
+        if(input[1].Length > 60000)
+        {
+            Console.WriteLine("ERROR: Length of message can be max 60000, truncating...");
+            input[1] = input[1].Substring(0, 60000);
+        }
+        return $"MSG FROM {username} IS {input[1]}";
+    }
     
 }
