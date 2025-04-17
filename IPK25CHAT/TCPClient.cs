@@ -115,11 +115,14 @@ public class TCPClient : TransportClient
             case ClientStates.States.START:
                 if(message.StartsWith("ERR"))
                 {
+                    string[] content = Messages.ErrorMessage(message);
+                    Console.WriteLine($"ERROR FROM {content[1]}: {content[2]}");
                     state = ClientStates.States.END;
                     await DisconnectAsync();
                 }
                 else if(message.StartsWith("BYE"))
                 {
+                    string[] content = Messages.ByeMessage(message);
                     state = ClientStates.States.END;
                     await DisconnectAsync();
                 }
@@ -132,11 +135,21 @@ public class TCPClient : TransportClient
             case ClientStates.States.AUTH:
                 if(message.StartsWith("MSG"))
                 {
+                    string[] content = Messages.MsgMessage(message);
+                    try{
+                        await ShowMessage(ConstructErrorMessage(content[1], "Message was received before authentication"));
+                    }
+                    catch(ArgumentException exception)
+                    {
+                        Console.WriteLine($"ERROR: {exception}");
+                    }
                     state = ClientStates.States.END;
                     await DisconnectAsync();
                 }
                 else if(message.StartsWith("ERR"))
                 {
+                    string[] content = Messages.ReplyMessage(message);
+                    Console.WriteLine($"ERROR FROM {content[1]}: {content[2]}");
                     state = ClientStates.States.END;
                     await DisconnectAsync();
                 }
@@ -147,8 +160,16 @@ public class TCPClient : TransportClient
                 }
                 else if(message.StartsWith("REPLY"))
                 {
-                    //NOK-return OR OK-OPEN
-                    state = ClientStates.States.OPEN;
+                    string[] content = Messages.ReplyMessage(message);
+                    if(content[1] == "OK")
+                    {
+                        Console.WriteLine($"Action Success: {content[2]}");
+                        state = ClientStates.States.OPEN;
+                    }
+                    else{
+                        Console.WriteLine($"Action Failure: {content[2]}");
+                        return;
+                    }
                 }
                 else
                 {
@@ -159,9 +180,21 @@ public class TCPClient : TransportClient
             case ClientStates.States.OPEN:
                 if(message.StartsWith("MSG"))
                 {
+                    string[] content = Messages.MsgMessage(message);
+                    try{
+                        await ShowMessage(ConstructErrorMessage(content[1], "Message was received before authentication"));
+                    }
+                    catch(ArgumentException exception)
+                    {
+                        Console.WriteLine($"ERROR: {exception}");
+                    }
+                    state = ClientStates.States.END;
+                    await DisconnectAsync();
                 }
                 else if(message.StartsWith("ERR"))
                 {
+                    string[] content = Messages.ReplyMessage(message);
+                    Console.WriteLine($"ERROR FROM {content[1]}: {content[2]}");
                     state = ClientStates.States.END;
                     await DisconnectAsync();
                 }
@@ -172,9 +205,16 @@ public class TCPClient : TransportClient
                 }
                 else if(message.StartsWith("REPLY"))
                 {
-                    //NOK OR OK
-                    state = ClientStates.States.END;
-                    await DisconnectAsync();
+                    string[] content = Messages.ReplyMessage(message);
+                    if(content[1] == "OK")
+                    {
+                        Console.WriteLine($"Action Success: {content[2]}");
+                        state = ClientStates.States.OPEN;
+                    }
+                    else{
+                        Console.WriteLine($"Action Failure: {content[2]}");
+                        return;
+                    }
                 }
                 else
                 {
@@ -185,11 +225,21 @@ public class TCPClient : TransportClient
             case ClientStates.States.JOIN:
                 if(message.StartsWith("MSG"))
                 {
+                    string[] content = Messages.MsgMessage(message);
+                    try{
+                        await ShowMessage(ConstructErrorMessage(content[1], "Message was received before authentication"));
+                    }
+                    catch(ArgumentException exception)
+                    {
+                        Console.WriteLine($"ERROR: {exception}");
+                    }
                     state = ClientStates.States.END;
                     await DisconnectAsync();
                 }
                 else if(message.StartsWith("ERR"))
                 {
+                    string[] content = Messages.ReplyMessage(message);
+                    Console.WriteLine($"ERROR FROM {content[1]}: {content[2]}");
                     state = ClientStates.States.END;
                     await DisconnectAsync();
                 }
@@ -200,8 +250,16 @@ public class TCPClient : TransportClient
                 }
                 else if(message.StartsWith("REPLY"))
                 {
-                    //NOK OR OK
-                    state = ClientStates.States.OPEN;
+                    string[] content = Messages.ReplyMessage(message);
+                    if(content[1] == "OK")
+                    {
+                        Console.WriteLine($"Action Success: {content[2]}");
+                        state = ClientStates.States.OPEN;
+                    }
+                    else{
+                        Console.WriteLine($"Action Failure: {content[2]}");
+                        return;
+                    }
                 }
                 else
                 {
@@ -215,6 +273,31 @@ public class TCPClient : TransportClient
                 Console.Error.WriteLine("Error: unknown state");
                 return;
         }
+    }
+    public string ConstructErrorMessage(string displayName, string content)
+    {
+        if(displayName.Length > 20)
+        {
+            throw new ArgumentException($"Length of display name: {displayName} is too long, must be less than 20");
+        }
+        if(content.Length > 60000)
+        {
+            Console.Error.WriteLine("Warning: Content of message is too long, max 60000 characters, truncating...");
+            content = content.Substring(0, 60000);
+        }
+        return $"ERR FROM {displayName} IS {content}\r\n";
+    }
+    public async Task ShowMessage(string message)
+    {
+        if (tcpClient == null || !tcpClient.Connected)
+        {
+            throw new InvalidOperationException("Client not connected");
+        }
+
+        message = message.EndsWith("\r\n") ? message : message + "\r\n";
+
+        await writer.WriteAsync(message);
+        await writer.FlushAsync();
     }
     public async Task UserCommands(CancellationToken token)
     {
