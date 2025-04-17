@@ -4,7 +4,7 @@ using System.Net;
 /**
  * Class to hold configuration options for a chat application.
  * Includes properties for server host, port, transport protocol, UDP timeout, and UDP retransmissions. 
- * Host address/IP and transport protocol are set by user.
+ * Host address/IP and transport protocol are mandatory and are set by user.
  */
 public class ChatOptions
 {

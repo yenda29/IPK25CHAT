@@ -55,9 +55,9 @@ public class ArgParser
                                     Environment.Exit(1);
                                 }
                             }
-                            catch (Exception ex)
+                            catch (Exception exception)
                             {
-                                Console.Error.WriteLine($"ERROR: Unable to resolve hostname '{serverHost}' - {ex.Message}");
+                                Console.Error.WriteLine($"ERROR: Unable to resolve hostname '{serverHost}' - {exception.Message}");
                                 Environment.Exit(1);
                             }
                         }
