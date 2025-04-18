@@ -1,6 +1,6 @@
 public interface TransportClient
 {
-    Task ConnectAsync();
+    Task Connect();
     Task Setup();
     Task Loop();
     Task DisconnectAsync();

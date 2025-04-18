@@ -23,7 +23,7 @@ public class TCPClient : TransportClient
         options = parsed;
     }
 
-    public async Task ConnectAsync()
+    public async Task Connect()
     {
         tcpClient = new TcpClient();
         await tcpClient.ConnectAsync(options.ServerHost, options.ServerPort);
@@ -37,56 +37,54 @@ public class TCPClient : TransportClient
 
     public async Task Loop()
     {
-        var tasks = new[]
-        {
-            Task.Run(() => ServerData(cancel.Token)),
-            Task.Run(() => UserCommands(cancel.Token))
-        };
+        state = ClientStates.States.START;
+        var server = ServerData(cancel.Token);
+        var user = UserCommands(cancel.Token);
 
-        await Task.WhenAny(tasks);
+        await Task.WhenAny(server, user);
         cancel.Cancel();
 
         try
         {
-            await Task.WhenAll(tasks);
+            await Task.WhenAll(server,user);
         }
         catch (OperationCanceledException)
         {
-            Console.WriteLine("Tasks cancelled");
+            Console.WriteLine("ERROR: Tasks cancelled");
         }
         catch (Exception exception)
         {
-            Console.WriteLine($"Error: {exception.Message}");
+            Console.WriteLine($"ERROR: {exception.Message}");
         }
     }
 
     public void CancelHandler(object? sender, ConsoleCancelEventArgs e)
     {
         e.Cancel = true;
-        Console.Error.WriteLine("Interrupt received, graceful termination incoming");
+        Console.Error.WriteLine("ERROR: Interrupt received, graceful termination incoming");
         this.Terminate();
     }
 
     public async Task Setup()
     {
-        Console.CancelKeyPress += new ConsoleCancelEventHandler(CancelHandler);
         try{
-            await ConnectAsync();
+            await Connect();
             await Loop();
             await DisconnectAsync();
         }
         catch(Exception exception){
-            Console.Error.WriteLine($"Error: {exception.Message}");
+            Console.Error.WriteLine($"ERROR: {exception.Message}");
             await DisconnectAsync();
         }
     }
 
     public async Task ServerData(CancellationToken token)
     {
-        bool disconnect = false;
+        
         try{
-            while(!token.IsCancellationRequested)
+            while(true)
             {
+                token.ThrowIfCancellationRequested();
                 string? inputMessage = await reader.ReadLineAsync();
                 if(inputMessage==null)
                 {
@@ -98,17 +96,14 @@ public class TCPClient : TransportClient
         }
         catch(OperationCanceledException)
         {
-            disconnect = true;
+            await ShowMessage(ConstructByeMessage(username));
+            return;
         }
         catch(Exception exception)
         {
-            Console.Error.WriteLine($"Error: {exception.Message}");
+            Console.Error.WriteLine($"ERROR: {exception.Message}");
         }
-        finally
-        {
-            if(!disconnect || token.IsCancellationRequested);
-            //await byemessage
-        }
+        
     }
     public async Task ServerMessage(string message)
     {
@@ -130,7 +125,7 @@ public class TCPClient : TransportClient
                 }
                 else
                 {
-                    Console.Error.WriteLine("Error: wrong type of message received");
+                    Console.Error.WriteLine("ERROR: wrong type of message received");
                     return;
                 }
             break;
@@ -192,8 +187,7 @@ public class TCPClient : TransportClient
                     {
                         Console.WriteLine($"ERROR: {exception}");
                     }
-                    state = ClientStates.States.END;
-                    await DisconnectAsync();
+                    
                 }
                 else if(message.StartsWith("ERR"))
                 {
@@ -316,9 +310,16 @@ public class TCPClient : TransportClient
     public async Task  UserCommands(CancellationToken token)
     {
         try{
-            while (!token.IsCancellationRequested)
+            while (true)
             {
-                string? input = await Task.Run(() => Console.ReadLine(), token);
+                var read = Task.Run(() => Console.ReadLine());
+                var done = await Task.WhenAny(read, Task.Delay(Timeout.Infinite, token).ContinueWith(_ => (string)null));
+                if(token.IsCancellationRequested)
+                {
+                    token.ThrowIfCancellationRequested();
+                    break;
+                }
+                string input = await read;
                 if(input == null)
                 {
                     await ShowMessage(ConstructByeMessage(username));
@@ -449,11 +450,17 @@ public class TCPClient : TransportClient
     
     public async Task DisconnectAsync()
     {
-        cancel.Dispose();    
+        cancel?.Cancel();
+        cancel?.Dispose();
+        cancel = new CancellationTokenSource();
         reader?.Dispose();
         writer?.Dispose();
         tcpClient?.Dispose();
         stream?.Dispose();
+        tcpClient?.Dispose();
+        
+        // Přidej krátkou pauzu před opětovným použitím portu
+        await Task.Delay(1000);
     }
 
     public void Terminate()
@@ -461,6 +468,3 @@ public class TCPClient : TransportClient
         cancel.Cancel();
     }
 }
-
-
-

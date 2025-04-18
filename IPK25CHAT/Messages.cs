@@ -13,7 +13,7 @@ class Messages
     public static string[] ErrorMessage(string message)
     {
         //??reg
-        Match content = Regex.Match(message, @"^ERR FROM ([\x21-\x7E]{1,20}) IS ([\x20-\x7E\x0A]{1,60000})\r\n?$");
+        Match content = Regex.Match(message, @"^ERR FROM ([\x21-\x7E]{1,20}) IS ([\x20-\x7E\x0A]{1,60000})?$");
         if (content.Success)
         {
             return new string[] { "ERR", content.Groups[1].Value, content.Groups[2].Value };
@@ -22,7 +22,7 @@ class Messages
     }
     public static string[] ByeMessage(string message)
     {
-        Match content = Regex.Match(message, @"^BYE FROM ([\x21-\x7E]{1,20})\r\n?$");
+        Match content = Regex.Match(message, @"^BYE FROM ([\x21-\x7E]{1,20})?$");
         if (content.Success)
         {
             return new string[] { "BYE", content.Groups[1].Value};
@@ -32,7 +32,7 @@ class Messages
 
     public static string[] ReplyMessage(string message)
     {
-        Match content = Regex.Match(message, @"^REPLY (OK|NOK) IS ([\x20-\x7E\x0A]{1,60000})\r\n?$");
+        Match content = Regex.Match(message, @"^REPLY (OK|NOK) IS ([\x20-\x7E\x0A]{1,60000})$");
         if (content.Success)
         {
             return new string[] { "REPLY", content.Groups[1].Value, content.Groups[2].Value };
@@ -43,7 +43,7 @@ class Messages
     public static string[] MsgMessage(string message)
     {
         //??
-        Match content = Regex.Match(message, @"^MSG FROM ([\x21-\x7E]{1,20}) IS ([\x20-\x7E\x0A]{1,60000})\r\n?$");
+        Match content = Regex.Match(message, @"^MSG FROM ([\x21-\x7E]{1,20}) IS ([\x20-\x7E\x0A]{1,60000})?$");
         if (content.Success)
         {
             return new string[] { "MSG", content.Groups[1].Value, content.Groups[2].Value };
@@ -97,12 +97,12 @@ class Messages
         {
             throw new ArgumentException("ERROR: Length of display name can be max 20 and contain only printable ASCII characters");
         }
-        if(input[1].Length > 60000)
+        if(input[0].Length > 60000)
         {
             Console.WriteLine("ERROR: Length of message can be max 60000, truncating...");
-            input[1] = input[1].Substring(0, 60000);
+            input[0] = input[0].Substring(0, 60000);
         }
-        return $"MSG FROM {username} IS {input[1]}";
+        return $"MSG FROM {username} IS {input[0]}";
     }
     
 }

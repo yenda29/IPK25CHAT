@@ -17,6 +17,11 @@ class Program{
         if(options.TransportProtocol == "tcp")
         {
             tcpCommunication = new TCPClient(options); 
+            Console.CancelKeyPress += (sender, e) => {
+                e.Cancel = true;
+                Console.Error.WriteLine("Interrupt received, gracefully terminating...");
+                tcpCommunication.Terminate();
+            };
             await tcpCommunication.Setup();
         }
         else if(options.TransportProtocol == "udp")

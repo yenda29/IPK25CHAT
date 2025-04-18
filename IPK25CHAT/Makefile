@@ -1,11 +1,15 @@
 TARGET=ipk25chat-client
+RUNTIME=linux-x64
 
-all: build clean
+all: build
 
-# Build the project
 build:
-	dotnet publish -c Release -r linux-x64 /p:PublishSingleFile=true /p:PublishTrimmed=true -o ./
+	dotnet publish -c Release -r $(RUNTIME) \
+		/p:PublishSingleFile=true \
+		/p:PublishTrimmed=true \
+		/p:AssemblyName=$(TARGET) \
+		-o ./
 
-# Clean up the build
 clean:
 	dotnet clean
+	rm -f $(TARGET)
