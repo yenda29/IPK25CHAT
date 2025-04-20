@@ -57,12 +57,6 @@ public class TCPClient : TransportClient
         }
     }
 
-    /*public void CancelHandler(object? sender, ConsoleCancelEventArgs e)
-    {
-        e.Cancel = true;
-        Console.Error.WriteLine("ERROR: Interrupt received, graceful termination incoming");
-        this.Terminate();
-    }*/
 
     public async Task Setup()
     {
@@ -346,7 +340,6 @@ public class TCPClient : TransportClient
         }
         catch(OperationCanceledException)
         {
-            Console.Error.WriteLine("ERROR: Cancelled");
             await ShowMessage(ConstructByeMessage(username));
         }
         catch(Exception exception)
