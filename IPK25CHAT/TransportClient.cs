@@ -10,7 +10,4 @@ public interface TransportClient
     Task Authenticate(string[] input);
     Task Join(string[] input);
     void Terminate();
-    //void CancelHandler(object? sender, ConsoleCancelEventArgs e);
-
-
 }

@@ -1,11 +1,5 @@
-using System;
-using System.ComponentModel;
-using System.Linq.Expressions;
-using System.Net;
-using System.Net.Security;
 using System.Net.Sockets;
 using System.Text;
-using System.Xml;
 
 public class TCPClient : TransportClient
 {
@@ -101,7 +95,7 @@ public class TCPClient : TransportClient
                 }
                 await ServerMessage(inputMessage);
             }
-            //await byemessage?
+
         }
         catch(OperationCanceledException)
         {
@@ -240,7 +234,6 @@ public class TCPClient : TransportClient
                     try{
                         string output = Messages.Message(content, username);
                         await ShowMessage(output);
-                        //await ShowMessage(ConstructErrorMessage(content[1], "Message was received before authentication"));
                     }
                     catch(ArgumentException exception)
                     {

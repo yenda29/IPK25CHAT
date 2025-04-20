@@ -79,10 +79,30 @@ class Messages
         int msgSize = 1 + 2 + byteUsername.Length + 1 + byteDisplayName.Length + 1 + byteSecret.Length + 1;
         byte [] msg = new byte[msgSize];
         msg[0] = 0x02;
-        Buffer.BlockCopy(byteMsgId, 0, msg, 1, 2);
-        Buffer.BlockCopy(byteUsername, 0, msg, 3, byteUsername.Length);
-        Buffer.BlockCopy(byteDisplayName, 0, msg, 3 + byteUsername.Length + 1, byteDisplayName.Length);
-        Buffer.BlockCopy(byteSecret, 0, msg, 3 + byteUsername.Length + 1 + byteDisplayName.Length + 1, byteSecret.Length);
+        msg[1] = byteMsgId[0];
+        msg[2] = byteMsgId[1];
+
+        for (int i = 0; i < byteUsername.Length; i++)
+        {
+            msg[3 + i] = byteUsername[i];
+        }
+
+        msg[3 + byteUsername.Length] = 0;
+
+        for (int i = 0; i < byteDisplayName.Length; i++)
+        {
+            msg[4 + byteUsername.Length + i] = byteDisplayName[i];
+        }
+
+        msg[4 + byteUsername.Length + byteDisplayName.Length] = 0;
+
+        for (int i = 0; i < byteSecret.Length; i++)
+        {
+            msg[5 + byteUsername.Length + byteDisplayName.Length + i] = byteSecret[i];
+        }
+
+        msg[5 + byteUsername.Length + byteDisplayName.Length + byteSecret.Length] = 0;
+
         return msg;
     }
     public static byte[] UDPJoinMessage(UInt16 msgId, string[] input, string username)
@@ -98,11 +118,24 @@ class Messages
         int msgSize = 1 + 2 + byteChannelID.Length + 1 + byteDisplayName.Length + 1;
         byte [] msg = new byte[msgSize];
         msg[0] = 0x03;
-        Buffer.BlockCopy(byteMsgId, 0, msg, 1, 2);
-        Buffer.BlockCopy(byteChannelID, 0, msg, 3, byteChannelID.Length);
-        Buffer.BlockCopy(byteDisplayName, 0, msg, 3 + byteChannelID.Length + 1, byteDisplayName.Length);
+        msg[1] = byteMsgId[0];
+        msg[2] = byteMsgId[1];
+
+        for (int i = 0; i < byteChannelID.Length; i++)
+        {
+            msg[3 + i] = byteChannelID[i];
+        }
+
+        msg[3 + byteChannelID.Length] = 0;
+
+        for (int i = 0; i < byteDisplayName.Length; i++)
+        {
+            msg[4 + byteChannelID.Length + i] = byteDisplayName[i];
+        }
+
+        msg[4 + byteChannelID.Length + byteDisplayName.Length] = 0;
+
         return msg;
-        
     }
     public static byte[] UDPByeMessage(UInt16 msgId, string username)
     {
@@ -116,10 +149,16 @@ class Messages
         int msgSize = 1 + 2 + byteDisplayName.Length + 1;
         byte [] msg = new byte[msgSize];
         msg[0] = 0xFF;
-        Buffer.BlockCopy(byteMsgId, 0, msg, 1, 2);
-        Buffer.BlockCopy(byteDisplayName, 0, msg, 3, byteDisplayName.Length);
+        msg[1] = byteMsgId[0];
+        msg[2] = byteMsgId[1];
+
+        for (int i = 0; i < byteDisplayName.Length; i++)
+        {
+            msg[3 + i] = byteDisplayName[i];
+        }
+
+        msg[3 + byteDisplayName.Length] = 0;
         return msg;
-        
     }
     public static byte[] UDPErrMessage(UInt16 msgId, string username, string content)
     {
@@ -139,9 +178,23 @@ class Messages
         int msgSize = 1 + 2 + byteDisplayName.Length + 1 + byteMessageContent.Length + 1;
         byte [] msg = new byte[msgSize];
         msg[0] = 0xFE; 
-        Buffer.BlockCopy(byteMsgId, 0, msg, 1, 2);
-        Buffer.BlockCopy(byteDisplayName, 0, msg, 3, byteDisplayName.Length);
-        Buffer.BlockCopy(byteMessageContent, 0, msg, 3 + byteDisplayName.Length + 1, byteMessageContent.Length);
+        msg[1] = byteMsgId[0];
+        msg[2] = byteMsgId[1];
+
+        for (int i = 0; i < byteDisplayName.Length; i++)
+        {
+            msg[3 + i] = byteDisplayName[i];
+        }
+
+        msg[3 + byteDisplayName.Length] = 0;
+
+        int contentStart = 3 + byteDisplayName.Length + 1;
+        for (int i = 0; i < byteMessageContent.Length; i++)
+        {
+            msg[contentStart + i] = byteMessageContent[i];
+        }
+
+        msg[contentStart + byteMessageContent.Length] = 0;
         return msg;
     }
     
@@ -163,9 +216,22 @@ class Messages
         int msgSize = 1 + 2 + byteDisplayName.Length + 1 + byteMessageContent.Length + 1;
         byte [] msg = new byte[msgSize];
         msg[0] = 0x04; 
-        Buffer.BlockCopy(byteMsgId, 0, msg, 1, 2);
-        Buffer.BlockCopy(byteDisplayName, 0, msg, 3, byteDisplayName.Length);
-        Buffer.BlockCopy(byteMessageContent, 0, msg, 3 + byteDisplayName.Length + 1, byteMessageContent.Length);
+        msg[1] = byteMsgId[0];
+        msg[2] = byteMsgId[1];
+        for (int i = 0; i < byteDisplayName.Length; i++)
+        {
+            msg[3 + i] = byteDisplayName[i];
+        }
+
+        msg[3 + byteDisplayName.Length] = 0;
+
+        int messageStart = 3 + byteDisplayName.Length + 1;
+        for (int i = 0; i < byteMessageContent.Length; i++)
+        {
+            msg[messageStart + i] = byteMessageContent[i];
+        }
+
+        msg[messageStart + byteMessageContent.Length] = 0;
         return msg;
     }
     public static string AuthMessage(string[] input)
@@ -234,12 +300,16 @@ class Messages
         }
         return $"MSG FROM {username} IS {input[1]}";
     }
-    private static UInt16 MessageIdParser(byte [] byteMsgId){
+    public static ushort CheckEndian(ReadOnlySpan<byte> span)
+    {
         if (BitConverter.IsLittleEndian)
         {
-            Array.Reverse(byteMsgId);
+            return (ushort)((span[0] << 8) | span[1]);
         }
-        return  BitConverter.ToUInt16(byteMsgId, 0);
+        else
+        {
+            return BitConverter.ToUInt16(span);
+        }
     }
 
     public static ParsedMessage UDPMessage(byte[] input)
@@ -247,14 +317,11 @@ class Messages
         if(input.Length >= 3)
         {
             var parsed = new ParsedMessage();
-            byte[] refBytes = new byte[2];
-            byte[] msgBytes = new byte[2];
             switch((ClientStates.MessageTypes)input[0])
             {
                 case 0x00:
                     parsed.type = ClientStates.MessageTypes.CONFIRM;
-                    Buffer.BlockCopy(input, 1, refBytes, 0, 2);
-                    parsed.refMsgId = MessageIdParser(refBytes);
+                    parsed.refMsgId = CheckEndian(input.AsSpan(1, 2));
                 break;
                 case ClientStates.MessageTypes.REPLY:
                     parsed.type = ClientStates.MessageTypes.REPLY;
@@ -270,18 +337,15 @@ class Messages
                     {
                         throw new ArgumentException("ERROR: Malformed format of message");
                     }
-                    Buffer.BlockCopy(input, 1, msgBytes, 0, 2);
-                    parsed.msgId = MessageIdParser(msgBytes);
-                    Buffer.BlockCopy(input, 4, refBytes, 0, 2);
-                    parsed.refMsgId= MessageIdParser(refBytes);
+                    parsed.msgId = CheckEndian(input.AsSpan(1, 2));
+                    parsed.refMsgId = CheckEndian(input.AsSpan(1, 2));
                     parsed.content = MessageContent(input,6);
 
                     parsed.confirm = true;
                 break;
                 case ClientStates.MessageTypes.AUTH:
                     parsed.type = ClientStates.MessageTypes.AUTH;
-                    Buffer.BlockCopy(input, 1, msgBytes, 0, 2);
-                    parsed.msgId = MessageIdParser(msgBytes);
+                    parsed.msgId = CheckEndian(input.AsSpan(1, 2));
                     parsed.username = MessageContent(input,3);
                     parsed.display = MessageContent(input,3 + parsed.username.Length + 1);
                     parsed.secret = MessageContent(input,3 + parsed.username.Length + 1 + parsed.display.Length + 1);
@@ -289,38 +353,33 @@ class Messages
                 break;
                 case ClientStates.MessageTypes.JOIN:
                     parsed.type = ClientStates.MessageTypes.JOIN;
-                    Buffer.BlockCopy(input, 1, msgBytes, 0, 2);
-                    parsed.msgId = MessageIdParser(msgBytes);
+                    parsed.msgId = CheckEndian(input.AsSpan(1, 2));
                     parsed.channel = MessageContent(input,3);
                     parsed.display = MessageContent(input,3 + parsed.username.Length + 1);
                     parsed.confirm = true;
                 break;
                 case ClientStates.MessageTypes.MSG:
                     parsed.type = ClientStates.MessageTypes.MSG;
-                    Buffer.BlockCopy(input, 1, msgBytes, 0, 2);
-                    parsed.msgId = MessageIdParser(msgBytes);
+                    parsed.msgId = CheckEndian(input.AsSpan(1, 2));
                     parsed.username = MessageContent(input,3);
                     parsed.content = MessageContent(input,3 + parsed.username.Length + 1);
                     parsed.confirm = true;
                 break;
                 case ClientStates.MessageTypes.PING:
                     parsed.type = ClientStates.MessageTypes.PING;
-                    Buffer.BlockCopy(input, 1, msgBytes, 0, 2);
-                    parsed.msgId = MessageIdParser(msgBytes);
+                    parsed.msgId = CheckEndian(input.AsSpan(1, 2));
                     parsed.confirm = true;
                 break;
                 case ClientStates.MessageTypes.ERR:
                     parsed.type = ClientStates.MessageTypes.ERR;
-                    Buffer.BlockCopy(input, 1, msgBytes, 0, 2);
-                    parsed.msgId = MessageIdParser(msgBytes);
-                    parsed.username = MessageContent(input,3);
-                    parsed.content = MessageContent(input,3 + parsed.username.Length + 1);
+                    parsed.msgId = CheckEndian(input.AsSpan(1, 2));
+                    parsed.display = MessageContent(input,3);
+                    parsed.content = MessageContent(input,3 + parsed.display.Length + 1);
                     parsed.confirm = true;
                 break;
                 case ClientStates.MessageTypes.BYE:
                     parsed.type = ClientStates.MessageTypes.BYE;
-                    Buffer.BlockCopy(input, 1, msgBytes, 0, 2);
-                    parsed.msgId = MessageIdParser(msgBytes);
+                    parsed.msgId = CheckEndian(input.AsSpan(1, 2));
                     parsed.username = MessageContent(input,3);
                     parsed.confirm = true;
                 break;
@@ -340,8 +399,8 @@ class Messages
         }
         int length = end - index;
         byte[] bytes = new byte[length];
-        Buffer.BlockCopy(input, index, bytes, 0, length);
-        return Encoding.UTF8.GetString(bytes);
+        string result = Encoding.UTF8.GetString(input, index, length);
+        return result;  
     }
     private static byte [] MessageIdConvertor(UInt16 msgId){
         byte [] byteMsgId = BitConverter.GetBytes(msgId);
@@ -354,11 +413,11 @@ class Messages
 
     public static byte[] UDPConfirm(UInt16 msgId)
     {
-        Console.Error.WriteLine($"CREATING CONFIRM FOR: ID:{msgId}");
         byte[] byteMsgId = MessageIdConvertor(msgId);
         byte [] msg = new byte[3];
         msg[0] = 0x00; 
-        Buffer.BlockCopy(byteMsgId, 0, msg, 1, 2);
+        msg[1] = byteMsgId[0];
+        msg[2] = byteMsgId[1];
         return msg;
     }
     

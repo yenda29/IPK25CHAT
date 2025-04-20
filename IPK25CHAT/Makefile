@@ -1,5 +1,6 @@
 TARGET=ipk25chat-client
 RUNTIME=linux-x64
+OUTPUT_DIR=.
 
 all: build
 
@@ -8,7 +9,8 @@ build:
 		/p:PublishSingleFile=true \
 		/p:PublishTrimmed=true \
 		/p:AssemblyName=$(TARGET) \
-		-o ./
+		-o $(OUTPUT_DIR)
+		
 
 clean:
 	dotnet clean

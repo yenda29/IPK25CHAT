@@ -11,7 +11,7 @@ using System.Xml;
 public class UDPClient : TransportClient
 {
     private UdpClient? udpClient;
-    private ChatOptions? options;
+    private ChatOptions options;
     private ClientStates.States? state = ClientStates.States.START;
     private CancellationTokenSource cancel = new CancellationTokenSource();
     private IPEndPoint server;
@@ -35,13 +35,8 @@ public class UDPClient : TransportClient
     public Task Connect()
     {
         udpClient = new UdpClient();
-        if (options == null)
-        {
-            throw new InvalidOperationException("ChatOptions cannot be null.");
-        }
         udpClient.Client.ReceiveTimeout = options.UDPTimeout;
         udpClient.Client.Bind(new IPEndPoint(IPAddress.Any, 0));
-        Console.Error.WriteLine($"Connecting to server...");
         return Task.CompletedTask;
     }
 
@@ -50,23 +45,28 @@ public class UDPClient : TransportClient
         try{
             while(true)
             {
-                Console.Error.WriteLine("Receiving data...");
                 token.ThrowIfCancellationRequested();
     
-                UdpReceiveResult receive;
                 if (udpClient == null)
                 {
                     throw new InvalidOperationException("UDP Client is not initialized.");
                 }
-                receive = await udpClient.ReceiveAsync();
-                server = receive.RemoteEndPoint;
+                Task<UdpReceiveResult> receive = udpClient.ReceiveAsync();
+                Task completed = await Task.WhenAny(receive, Task.Delay(Timeout.Infinite, token));
 
-                if(receive.Buffer == null || receive.Buffer.Length == 0)
+                token.ThrowIfCancellationRequested();
+
+                if (completed == receive)
                 {
-                    Console.Error.WriteLine("ERROR: No data received from server.");
-                    break;
+                    var result = await receive;
+                    server = result.RemoteEndPoint;
+                    if (result.Buffer == null || result.Buffer.Length == 0)
+                    {
+                        Console.WriteLine("ERROR: No data received from server.");
+                        break;
+                    }
+                    await ServerMessage(result.Buffer);
                 }
-                await ServerMessage(receive.Buffer);
             }
         }
         catch(OperationCanceledException)
@@ -74,28 +74,39 @@ public class UDPClient : TransportClient
             if(!end)
             {
                 end = true;
-                Console.Error.WriteLine("Exiting...");
                 await ShowMessage(Messages.UDPByeMessage(msg, username));
             }
             return;
         }
         catch(Exception exception)
         {
-            Console.Error.WriteLine($"ERROR: {exception.Message}");
+            Console.WriteLine($"ERROR: {exception.Message}");
         }
     }
 
     public async Task ServerMessage(byte[] buffer)
     {
-        ParsedMessage message = Messages.UDPMessage(buffer);
-        Console.Error.WriteLine($"Received message in state: {state} ref: {message.refMsgId} ID: {message.msgId} from server. TYPE: {message.type} MSG: {message.content}");
+        if (buffer.Length >= 3)
+        {
+            UInt16 msgId = BitConverter.ToUInt16(buffer, 1);
+            if(udpClient != null)
+            {
+                byte[] confirm = Messages.UDPConfirm(msgId);
+                await udpClient.SendAsync(confirm, confirm.Length, server);
+                Console.Error.WriteLine($"Sent CONFIRM for MsgId: {msgId}");
+            }
+        }
+        
         try{
+            ParsedMessage message = Messages.UDPMessage(buffer);
+            Console.Error.WriteLine($"Received message: {message.type}, MsgId: {message.msgId}");
             if(message.type == ClientStates.MessageTypes.CONFIRM)
             {
-                if(confirmations.TryRemove(message.refMsgId, out TaskCompletionSource<bool> tcs))
+                Console.Error.WriteLine($"Received CONFIRM for MsgId: {message.refMsgId}");
+                if(confirmations.TryRemove(message.refMsgId, out TaskCompletionSource<bool>? tcs) && tcs != null)
                 {
-                    Task.Run(() => tcs.TrySetResult(true));
-                    Console.Error.WriteLine($"CONFIRM message ID: {message.refMsgId}");
+                    Console.Error.WriteLine($"Confirming MsgId: {message.refMsgId}");
+                    tcs.TrySetResult(true);
                 }
                 else
                 {
@@ -106,18 +117,16 @@ public class UDPClient : TransportClient
             
             if(message.confirm==true)
             {
-                Console.Error.WriteLine($"CONFIRMATION for {message.type}, for message ID {message.msgId}");
                 bool isAuthReply = state == ClientStates.States.AUTH && message.type == ClientStates.MessageTypes.REPLY;
                 bool isSameIP = server.Address.Equals(current.Address);
                 bool isDifferentPort = current.Port != server.Port;
                 if (isAuthReply && isSameIP && isDifferentPort)
                 {
                     current = server;
-                    Console.Error.WriteLine($"Switching to port {server.Port}");
                 }
                 await Confirm(message.msgId);
             }
-
+            
             switch(state)
             {
                 case ClientStates.States.START:
@@ -138,7 +147,7 @@ public class UDPClient : TransportClient
                     }
                     else
                     {
-                        Console.Error.WriteLine($"ERROR: Unknown message type in start {message.type}");            
+                        Console.WriteLine($"ERROR: Unknown message type in start {message.type}");            
                         return;
                     }
                 break;
@@ -183,9 +192,13 @@ public class UDPClient : TransportClient
                     {
                         return;
                     }
+                    else if(message.type == ClientStates.MessageTypes.CONFIRM)
+                    {
+                        await Confirm(message.msgId);
+                    }
                     else
                     {
-                        Console.Error.WriteLine($"ERROR: Unknown message type in reply {message.type}");            
+                        Console.WriteLine($"ERROR: Unknown message type in auth {message.type}");            
                         return;
                     }
                 break;
@@ -224,7 +237,7 @@ public class UDPClient : TransportClient
                     }
                     else
                     {
-                        Console.Error.WriteLine($"ERROR: Unknown message type in join {message.type}");            
+                        Console.WriteLine($"ERROR: Unknown message type in join {message.type}");            
                         return;
                     }
                 break;
@@ -246,7 +259,7 @@ public class UDPClient : TransportClient
                         }
                         catch(ArgumentException exception)
                         {
-                            Console.Error.WriteLine($"ERROR: {exception.Message}");
+                            Console.WriteLine($"ERROR: {exception.Message}");
                         }
                         state = ClientStates.States.END;
                         await DisconnectAsync();
@@ -264,7 +277,7 @@ public class UDPClient : TransportClient
                     }
                     else if(message.type == ClientStates.MessageTypes.MSG)
                     {
-                        Console.Error.WriteLine($"{message.username}: {message.content}"); 
+                        Console.WriteLine($"{message.username}: {message.content}"); 
                     }
                     else if(message.type == ClientStates.MessageTypes.PING)
                     {
@@ -272,19 +285,20 @@ public class UDPClient : TransportClient
                     }
                     else
                     {
-                        Console.Error.WriteLine($"ERROR: Unknown message type in open {message.type}");            
+                        Console.WriteLine($"ERROR: Unknown message type in open {message.type}");            
                         return;
                     }
                 break;
                 case ClientStates.States.END:
                 break;
                 default:
-                    Console.Error.WriteLine($"ERROR: Unknow FSM state: {state}");
+                    Console.WriteLine($"ERROR: Unknow FSM state: {state}");
                 break;
             }  
         }
         catch(Exception exception)
         {
+            await ShowMessage(Messages.UDPErrMessage(msg, username, "Invalid message format"));
             Console.WriteLine($"ERROR: {exception.Message}");
         } 
     }
@@ -292,7 +306,6 @@ public class UDPClient : TransportClient
     public async Task ShowMessage(byte[] message)
     {
         string display = Encoding.UTF8.GetString(message);
-        Console.Error.WriteLine($"Sending {msg} message to server. MSG: {display}");
         if(udpClient == null)
         {
             throw new InvalidOperationException("Not connected");
@@ -304,29 +317,32 @@ public class UDPClient : TransportClient
         bool confirmed = false;
         ushort id = msg;
         msg++;
+        Console.Error.WriteLine($"Sending message ID {id}: {display}");
         while(attempts < options.UDPRetransmissions && !confirmed)
         {
             try
             {
                 try {
                     await udpClient.SendAsync(message, message.Length, current);
+                    Console.Error.WriteLine($"Message ID {id} sent, waiting for confirmation...");
+                    var timeout = Task.Delay(options.UDPTimeout);
+                    var confirmTask = task.Task;
+                    var completedTask = await Task.WhenAny(confirmTask, timeout);
+                    if (completedTask == confirmTask)
+                    {
+                        confirmed = true;
+                        confirmations.TryRemove(id, out _);
+                        Console.Error.WriteLine($"Message ID {id} confirmed.");
+                    }
+                    else
+                    {
+                        attempts++;
+                        Console.Error.WriteLine($"Message ID {id} not confirmed, attempt {attempts}.");
+                    }  
                 } catch (Exception ex) {
-                    Console.Error.WriteLine($"ERROR SEND: {ex.Message}");
+                    Console.WriteLine($"ERROR: {ex.Message}");
                 }
-                var timeout = Task.Delay(options.UDPTimeout);
-                var confirmTask = task.Task;
-                var completedTask = await Task.WhenAny(confirmTask, timeout);
-                if (completedTask == confirmTask)
-                {
-                    confirmed = true;
-                    confirmations.TryRemove(id, out _);
-                    Console.Error.WriteLine($"Confirmation {id} received for msg {display}");
-                }
-                else
-                {
-                    attempts++;
-                    Console.Error.WriteLine($"No confirmation received for msg {id}. Retrying... ({attempts}/{options.UDPRetransmissions})");
-                }  
+                
             }
             catch (SocketException exception)
             {
@@ -338,11 +354,9 @@ public class UDPClient : TransportClient
             Console.WriteLine($"ERROR: No confirmation for message ID {id}, tried {attempts} times");
             confirmations.TryRemove(id, out _);
         }
-        Console.Error.WriteLine($"Message {id} sent successfully.");
     }
     public async Task ProcessCommand(string message)
-    {
-        Console.Error.WriteLine("User command processing");
+    {        
         if(message == null)
         {
             return;
@@ -356,7 +370,6 @@ public class UDPClient : TransportClient
             }
             else if(input[0] == "/auth")
             {                
-                Console.Error.WriteLine("Authenticating...");
                 if(input.Length == 4)
                 {
                     await Authenticate(input);
@@ -367,7 +380,6 @@ public class UDPClient : TransportClient
             }
             else if(input[0] == "/join")
             {
-                Console.Error.WriteLine($"Joining channel: {input[1]}");
                 if(input.Length == 2)
                 {
                     await Join(input);
@@ -378,7 +390,6 @@ public class UDPClient : TransportClient
             }
             else if(input[0] == "/rename")
             {
-                Console.Error.WriteLine($"Renaming user to: {input[1]}");
                 if(input.Length == 2)
                 {
                     username = Messages.Rename(input);
@@ -407,7 +418,6 @@ public class UDPClient : TransportClient
             else
             {
                 Console.WriteLine("ERROR: unknown command, use /help");
-                DisconnectAsync();
             }
         }
     }
@@ -433,7 +443,6 @@ public class UDPClient : TransportClient
     }
     public async Task Authenticate(string[] input)
     {
-        Console.Error.WriteLine($"Authenticating as {input[1]} with display name {input[3]}");
         if(state == ClientStates.States.START || state == ClientStates.States.AUTH)
         {
             try{
@@ -452,18 +461,16 @@ public class UDPClient : TransportClient
             Console.WriteLine("ERROR: Already authenticated");
             return;
         }
-        Console.Error.WriteLine($"Authentication message sent.");
     }
     public async Task UserCommands(CancellationToken token)
     {
-       Console.Error.WriteLine("User input processs"); 
        try
         {
             while (true)
             {
                 token.ThrowIfCancellationRequested();
                 string ?input = Console.ReadLine();
-                if (input == null)  // EOF (Ctrl+D)
+                if (input == null)
                     break;
                 
                 await ProcessCommand(input);
@@ -474,7 +481,6 @@ public class UDPClient : TransportClient
             if(!end)
             {
                 end = true;
-                Console.Error.WriteLine("Exiting...");
                 await ShowMessage(Messages.UDPByeMessage(msg, username));
                 
             }
@@ -488,7 +494,6 @@ public class UDPClient : TransportClient
 
     public async Task Loop()
     {
-        Console.Error.WriteLine("Connected to server. Type /help for available commands.");
         state = ClientStates.States.START;
         var server = ServerData(cancel.Token);
         var user = UserCommands(cancel.Token);
@@ -513,7 +518,6 @@ public class UDPClient : TransportClient
     public async Task Confirm(UInt16 msgId)
     {
         byte[] msg = Messages.UDPConfirm(msgId);
-        Console.Error.WriteLine($"Sending confirmation for:  {msg} ON PORT: {current.Port}");
         if(udpClient == null)
         {
             throw new InvalidOperationException("UDP Client isn't connected");
@@ -528,7 +532,7 @@ public class UDPClient : TransportClient
             await DisconnectAsync();
         }
         catch(Exception exception){
-            Console.Error.WriteLine($"ERROR: {exception.Message}");
+            Console.WriteLine($"ERROR: {exception.Message}");
             await DisconnectAsync();
         }
     }
@@ -539,15 +543,11 @@ public class UDPClient : TransportClient
         cancel?.Dispose();
         cancel = new CancellationTokenSource();
         udpClient?.Dispose();
-        Console.Error.WriteLine("Disconnected from server.");
-
-        //await Task.Delay(1000);
-        Environment.Exit(0);
+        await Task.CompletedTask;
     }
 
     public void Terminate()
     {
-        Console.Error.WriteLine("Shutting down...");
         cancel.Cancel();
     }
 }

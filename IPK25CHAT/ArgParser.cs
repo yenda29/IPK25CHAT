@@ -32,15 +32,12 @@ public class ArgParser
                     if (i + 1 < args.Length)
                     {
                         string serverHost = args[++i];
-                        // Check if the serverHost is a valid IPv4 address
                         if (IPAddress.TryParse(serverHost, out IPAddress? ipAddress) && ipAddress != null && ipAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
                         {
-                            // It's a valid IPv4 address
                             options.ServerHost = serverHost;
                         }
                         else
                         {
-                            // It's not an IPv4 address, so treat it as a hostname and resolve it
                             try
                             {
                                 IPHostEntry hostEntry = Dns.GetHostEntry(serverHost);
