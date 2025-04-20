@@ -131,7 +131,11 @@ public class TCPClient : TransportClient
                 else
                 {
                     Console.Error.WriteLine("ERROR: wrong type of message received");
-                    return;
+                    Console.WriteLine($"ERROR: Unexpected or invalid message received from server");
+                    string errMsg = ConstructErrorMessage(username, "Unexpected or invalid message received from server");
+                    await ShowMessage(errMsg);
+                    state = ClientStates.States.END;
+                    await DisconnectAsync();
                 }
             break;
             case ClientStates.States.AUTH:
@@ -176,7 +180,11 @@ public class TCPClient : TransportClient
                 else
                 {
                     Console.Error.WriteLine("ERROR: wrong type of message received");
-                    return;
+                    Console.WriteLine($"ERROR: Unexpected or invalid message received from server");
+                    string errMsg = ConstructErrorMessage(username, "Unexpected or invalid message received from server");
+                    await ShowMessage(errMsg);
+                    state = ClientStates.States.END;
+                    await DisconnectAsync();
                 }
             break;
             case ClientStates.States.OPEN:
@@ -213,7 +221,11 @@ public class TCPClient : TransportClient
                 else
                 {
                     Console.Error.WriteLine("ERROR: wrong type of message received");
-                    return;
+                    Console.WriteLine($"ERROR: Unexpected or invalid message received from server");
+                    string errMsg = ConstructErrorMessage(username, "Unexpected or invalid message received from server");
+                    await ShowMessage(errMsg);
+                    state = ClientStates.States.END;
+                    await DisconnectAsync();
                 }
             break;
             case ClientStates.States.JOIN:
@@ -260,13 +272,17 @@ public class TCPClient : TransportClient
                 else
                 {
                     Console.Error.WriteLine("ERROR: wrong type of message received");
-                    return;
+                    Console.WriteLine($"ERROR: Unexpected or invalid message received from server");
+                    string errMsg = ConstructErrorMessage(username, "Unexpected or invalid message received from server");
+                    await ShowMessage(errMsg);
+                    state = ClientStates.States.END;
+                    await DisconnectAsync();
                 }
             break;
             case ClientStates.States.END:
             break;
             default:
-                Console.WriteLine("Error: unknown state");
+                Console.WriteLine("ERROR: unknown state");
                 return;
         }
     }
@@ -313,7 +329,6 @@ public class TCPClient : TransportClient
                 if(token.IsCancellationRequested)
                 {
                     Console.Error.WriteLine("Exiting...");
-                    Console.Error.WriteLine($"{username}");
                     token.ThrowIfCancellationRequested();
                     break;
                 }
