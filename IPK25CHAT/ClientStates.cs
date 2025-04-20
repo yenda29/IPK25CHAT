@@ -19,6 +19,7 @@ public class ClientStates
         MSG = 0x04,
         PING = 0xFD,
         ERR = 0xFE,
-        BYE = 0xFF
+        BYE = 0xFF,     
+        UNDEF
     }
 }

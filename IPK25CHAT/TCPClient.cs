@@ -25,7 +25,10 @@ public class TCPClient : TransportClient
 
     public async Task Connect()
     {
+        Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
         tcpClient = new TcpClient();
+        tcpClient.Client = socket;
         await tcpClient.ConnectAsync(options.ServerHost, options.ServerPort);
         stream = tcpClient.GetStream();
         writer = new StreamWriter(stream, Encoding.ASCII) 
@@ -40,7 +43,7 @@ public class TCPClient : TransportClient
         state = ClientStates.States.START;
         var server = ServerData(cancel.Token);
         var user = UserCommands(cancel.Token);
-
+        
         await Task.WhenAny(server, user);
         cancel.Cancel();
 
@@ -58,12 +61,12 @@ public class TCPClient : TransportClient
         }
     }
 
-    public void CancelHandler(object? sender, ConsoleCancelEventArgs e)
+    /*public void CancelHandler(object? sender, ConsoleCancelEventArgs e)
     {
         e.Cancel = true;
         Console.Error.WriteLine("ERROR: Interrupt received, graceful termination incoming");
         this.Terminate();
-    }
+    }*/
 
     public async Task Setup()
     {
@@ -338,15 +341,7 @@ public class TCPClient : TransportClient
             Console.WriteLine($"ERROR: {exception.Message}");
         }
     }
-    public void CommandsHelp()
-    {
-        Console.WriteLine("Commands:");
-        Console.WriteLine("/help - prints out help");
-        Console.WriteLine("/auth {Username} {Secret} {DisplayName} - Sends AUTH message with the data provided");
-        Console.WriteLine("/join {ChannelID} - Sends JOIN message with channel name");
-        Console.WriteLine("/rename {DisplayName} - Locally changes the display name");
-        Console.WriteLine("/exit - Exits");
-    }
+    
     public async Task Authenticate(string[] input)
     {
         if(state == ClientStates.States.START || state == ClientStates.States.AUTH)
@@ -373,9 +368,16 @@ public class TCPClient : TransportClient
     {
         if(state == ClientStates.States.OPEN)
         {
-            string output = Messages.JoinMessage(input, username);
-            state = ClientStates.States.JOIN;
-            await ShowMessage(output);
+            try{
+                string output = Messages.JoinMessage(input, username);
+                state = ClientStates.States.JOIN;
+                await ShowMessage(output);
+            }
+            catch(Exception ex){
+                Console.WriteLine($"ERROR: {ex.Message}");
+                state = ClientStates.States.OPEN;
+            }
+            
         }
         else{
             Console.WriteLine("ERROR: Can only join from open state");
@@ -394,7 +396,7 @@ public class TCPClient : TransportClient
         {
             if(input[0] == "/help")
             {
-                CommandsHelp();
+                Messages.CommandsHelp();
             }
             else if(input[0] == "/auth")
             {
@@ -459,8 +461,8 @@ public class TCPClient : TransportClient
         stream?.Dispose();
         tcpClient?.Dispose();
         
-        // Přidej krátkou pauzu před opětovným použitím portu
         await Task.Delay(1000);
+        Environment.Exit(0);
     }
 
     public void Terminate()
