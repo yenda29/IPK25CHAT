@@ -25,10 +25,11 @@ public class TCPClient : TransportClient
 
     public async Task Connect()
     {
-        //Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-        //socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
         tcpClient = new TcpClient();
-        //tcpClient.Client = socket;
+        if (options == null)
+        {
+            throw new InvalidOperationException("ChatOptions cannot be null.");
+        }
         await tcpClient.ConnectAsync(options.ServerHost, options.ServerPort);
         stream = tcpClient.GetStream();
         writer = new StreamWriter(stream, Encoding.ASCII) 
@@ -89,6 +90,10 @@ public class TCPClient : TransportClient
             while(true)
             {
                 token.ThrowIfCancellationRequested();
+                if (reader == null)
+                {
+                    throw new InvalidOperationException("Reader is not initialized.");
+                }
                 string? inputMessage = await reader.ReadLineAsync();
                 if(inputMessage==null)
                 {
@@ -316,6 +321,10 @@ public class TCPClient : TransportClient
 
         message = message.EndsWith("\r\n") ? message : message + "\r\n";
 
+        if (writer == null)
+        {
+            throw new InvalidOperationException("Writer is not initialized.");
+        }
         await writer.WriteAsync(message);
         await writer.FlushAsync();
     }
@@ -325,15 +334,15 @@ public class TCPClient : TransportClient
             while (true)
             {
                 var read = Task.Run(() => Console.ReadLine());
-                var done = await Task.WhenAny(read, Task.Delay(Timeout.Infinite, token).ContinueWith(_ => (string)null));
+                var done = await Task.WhenAny(read, Task.Delay(Timeout.Infinite, token).ContinueWith(_ => (string?)null));
                 if(token.IsCancellationRequested)
                 {
                     Console.Error.WriteLine("Exiting...");
                     token.ThrowIfCancellationRequested();
                     break;
                 }
-                string input = await read;
-                if(input == null)
+                string input = await read ?? string.Empty;
+                if(input == string.Empty)
                 {
                     await ShowMessage(ConstructByeMessage(username));
                     Terminate();
@@ -434,9 +443,7 @@ public class TCPClient : TransportClient
             {
                 if(input.Length == 2)
                 {
-                    Console.Error.WriteLine($"predtim {username}");
                     username = Messages.Rename(input);
-                    Console.Error.WriteLine($"potom {username}");
                 }
                 else{
                     Console.WriteLine("ERROR: Invalid params, /help to see needed parameters");
@@ -454,7 +461,6 @@ public class TCPClient : TransportClient
         else{
             if(state == ClientStates.States.OPEN || state == ClientStates.States.JOIN)
             {
-                Console.Error.WriteLine($"{message} a {username}");
                 string output = Messages.MessageSend(message, username);
                 await ShowMessage(output);
             }
@@ -476,8 +482,7 @@ public class TCPClient : TransportClient
         stream?.Dispose();
         tcpClient?.Dispose();
         
-        await Task.Delay(1000);
-        Environment.Exit(0);
+        await Task.CompletedTask;
     }
 
     public void Terminate()

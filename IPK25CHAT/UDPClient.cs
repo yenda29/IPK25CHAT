@@ -10,7 +10,7 @@ using System.Xml;
 
 public class UDPClient : TransportClient
 {
-    private UdpClient udpClient;
+    private UdpClient? udpClient;
     private ChatOptions? options;
     private ClientStates.States? state = ClientStates.States.START;
     private CancellationTokenSource cancel = new CancellationTokenSource();
@@ -32,12 +32,17 @@ public class UDPClient : TransportClient
         confirmations = new ConcurrentDictionary<ushort, TaskCompletionSource<bool>>();
     }
 
-    public async Task Connect()
+    public Task Connect()
     {
         udpClient = new UdpClient();
+        if (options == null)
+        {
+            throw new InvalidOperationException("ChatOptions cannot be null.");
+        }
         udpClient.Client.ReceiveTimeout = options.UDPTimeout;
         udpClient.Client.Bind(new IPEndPoint(IPAddress.Any, 0));
         Console.Error.WriteLine($"Connecting to server...");
+        return Task.CompletedTask;
     }
 
     public async Task ServerData(CancellationToken token)
@@ -49,10 +54,14 @@ public class UDPClient : TransportClient
                 token.ThrowIfCancellationRequested();
     
                 UdpReceiveResult receive;
+                if (udpClient == null)
+                {
+                    throw new InvalidOperationException("UDP Client is not initialized.");
+                }
                 receive = await udpClient.ReceiveAsync();
                 server = receive.RemoteEndPoint;
 
-                if(receive == null)
+                if(receive.Buffer == null || receive.Buffer.Length == 0)
                 {
                     Console.Error.WriteLine("ERROR: No data received from server.");
                     break;
