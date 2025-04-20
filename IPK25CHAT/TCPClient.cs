@@ -25,10 +25,10 @@ public class TCPClient : TransportClient
 
     public async Task Connect()
     {
-        Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-        socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+        //Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        //socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
         tcpClient = new TcpClient();
-        tcpClient.Client = socket;
+        //tcpClient.Client = socket;
         await tcpClient.ConnectAsync(options.ServerHost, options.ServerPort);
         stream = tcpClient.GetStream();
         writer = new StreamWriter(stream, Encoding.ASCII) 
@@ -40,6 +40,7 @@ public class TCPClient : TransportClient
 
     public async Task Loop()
     {
+        Console.Error.WriteLine("Connected to server. Type /help for available commands.");
         state = ClientStates.States.START;
         var server = ServerData(cancel.Token);
         var user = UserCommands(cancel.Token);
@@ -76,7 +77,7 @@ public class TCPClient : TransportClient
             await DisconnectAsync();
         }
         catch(Exception exception){
-            Console.Error.WriteLine($"ERROR: {exception.Message}");
+            Console.WriteLine($"ERROR: {exception.Message}");
             await DisconnectAsync();
         }
     }
@@ -104,23 +105,24 @@ public class TCPClient : TransportClient
         }
         catch(Exception exception)
         {
-            Console.Error.WriteLine($"ERROR: {exception.Message}");
+            Console.WriteLine($"ERROR: {exception.Message}");
         }
         
     }
     public async Task ServerMessage(string message)
     {
+        Console.Error.WriteLine($"Server message: {message}");
         switch(state)
         {
             case ClientStates.States.START:
-                if(message.StartsWith("ERR"))
+                if(message.ToUpper().StartsWith("ERR"))
                 {
                     string[] content = Messages.ErrorMessage(message);
                     Console.WriteLine($"ERROR FROM {content[1]}: {content[2]}");
                     state = ClientStates.States.END;
                     await DisconnectAsync();
                 }
-                else if(message.StartsWith("BYE"))
+                else if(message.ToUpper().StartsWith("BYE"))
                 {
                     string[] content = Messages.ByeMessage(message);
                     state = ClientStates.States.END;
@@ -133,7 +135,7 @@ public class TCPClient : TransportClient
                 }
             break;
             case ClientStates.States.AUTH:
-                if(message.StartsWith("MSG"))
+                if(message.ToUpper().StartsWith("MSG"))
                 {
                     string[] content = Messages.MsgMessage(message);
                     try{
@@ -146,19 +148,19 @@ public class TCPClient : TransportClient
                     state = ClientStates.States.END;
                     await DisconnectAsync();
                 }
-                else if(message.StartsWith("ERR"))
+                else if(message.ToUpper().StartsWith("ERR"))
                 {
-                    string[] content = Messages.ReplyMessage(message);
+                    string[] content = Messages.ErrorMessage(message);
                     Console.WriteLine($"ERROR FROM {content[1]}: {content[2]}");
                     state = ClientStates.States.END;
                     await DisconnectAsync();
                 }
-                else if(message.StartsWith("BYE"))
+                else if(message.ToUpper().StartsWith("BYE"))
                 {
                     state = ClientStates.States.END;
                     await DisconnectAsync();
                 }
-                else if(message.StartsWith("REPLY"))
+                else if(message.ToUpper().StartsWith("REPLY"))
                 {
                     string[] content = Messages.ReplyMessage(message);
                     if(content[1] == "OK")
@@ -173,38 +175,29 @@ public class TCPClient : TransportClient
                 }
                 else
                 {
-                    Console.Error.WriteLine("Error: wrong type of message received");
+                    Console.Error.WriteLine("ERROR: wrong type of message received");
                     return;
                 }
             break;
             case ClientStates.States.OPEN:
-                if(message.StartsWith("MSG"))
+                if(message.ToUpper().StartsWith("MSG"))
                 {
                     string[] content = Messages.MsgMessage(message);
-                    try{
-                        string output = Messages.Message(content, username);
-                        await ShowMessage(output);
-                        //await ShowMessage(ConstructErrorMessage(content[1], "Message was received before authentication"));
-                    }
-                    catch(ArgumentException exception)
-                    {
-                        Console.WriteLine($"ERROR: {exception}");
-                    }
-                    
+                    Console.WriteLine($"{content[1]}: {content[2]}");          
                 }
-                else if(message.StartsWith("ERR"))
+                else if(message.ToUpper().StartsWith("ERR"))
                 {
-                    string[] content = Messages.ReplyMessage(message);
+                    string[] content = Messages.ErrorMessage(message);
                     Console.WriteLine($"ERROR FROM {content[1]}: {content[2]}");
                     state = ClientStates.States.END;
                     await DisconnectAsync();
                 }
-                else if(message.StartsWith("BYE"))
+                else if(message.ToUpper().StartsWith("BYE"))
                 {
                     state = ClientStates.States.END;
                     await DisconnectAsync();
                 }
-                else if(message.StartsWith("REPLY"))
+                else if(message.ToUpper().StartsWith("REPLY"))
                 {
                     string[] content = Messages.ReplyMessage(message);
                     if(content[1] == "OK")
@@ -219,12 +212,12 @@ public class TCPClient : TransportClient
                 }
                 else
                 {
-                    Console.Error.WriteLine("Error: wrong type of message received");
+                    Console.Error.WriteLine("ERROR: wrong type of message received");
                     return;
                 }
             break;
             case ClientStates.States.JOIN:
-                if(message.StartsWith("MSG"))
+                if(message.ToUpper().StartsWith("MSG"))
                 {
                     string[] content = Messages.MsgMessage(message);
                     try{
@@ -239,19 +232,19 @@ public class TCPClient : TransportClient
                     state = ClientStates.States.END;
                     await DisconnectAsync();
                 }
-                else if(message.StartsWith("ERR"))
+                else if(message.ToUpper().StartsWith("ERR"))
                 {
-                    string[] content = Messages.ReplyMessage(message);
+                    string[] content = Messages.ErrorMessage(message);
                     Console.WriteLine($"ERROR FROM {content[1]}: {content[2]}");
                     state = ClientStates.States.END;
                     await DisconnectAsync();
                 }
-                else if(message.StartsWith("BYE"))
+                else if(message.ToUpper().StartsWith("BYE"))
                 {
                     state = ClientStates.States.END;
                     await DisconnectAsync();
                 }
-                else if(message.StartsWith("REPLY"))
+                else if(message.ToUpper().StartsWith("REPLY"))
                 {
                     string[] content = Messages.ReplyMessage(message);
                     if(content[1] == "OK")
@@ -266,14 +259,14 @@ public class TCPClient : TransportClient
                 }
                 else
                 {
-                    Console.Error.WriteLine("Error: wrong type of message received");
+                    Console.Error.WriteLine("ERROR: wrong type of message received");
                     return;
                 }
             break;
             case ClientStates.States.END:
             break;
             default:
-                Console.Error.WriteLine("Error: unknown state");
+                Console.WriteLine("Error: unknown state");
                 return;
         }
     }
@@ -319,6 +312,8 @@ public class TCPClient : TransportClient
                 var done = await Task.WhenAny(read, Task.Delay(Timeout.Infinite, token).ContinueWith(_ => (string)null));
                 if(token.IsCancellationRequested)
                 {
+                    Console.Error.WriteLine("Exiting...");
+                    Console.Error.WriteLine($"{username}");
                     token.ThrowIfCancellationRequested();
                     break;
                 }
@@ -334,6 +329,7 @@ public class TCPClient : TransportClient
         }
         catch(OperationCanceledException)
         {
+            Console.Error.WriteLine("ERROR: Cancelled");
             await ShowMessage(ConstructByeMessage(username));
         }
         catch(Exception exception)
@@ -348,7 +344,7 @@ public class TCPClient : TransportClient
         {
             try{
                 string output = Messages.AuthMessage(input);
-                username = input[1];
+                username = input[3];
                 state = ClientStates.States.AUTH;
                 await ShowMessage(output);
 
@@ -387,13 +383,14 @@ public class TCPClient : TransportClient
 
     public async Task ProcessCommand(string message)
     {
-        string[] input = message.Split(" ", StringSplitOptions.RemoveEmptyEntries);
+        
         if(message == null)
         {
             return;
         }
         if(message.StartsWith("/"))
         {
+            string[] input = message.Split(" ", StringSplitOptions.RemoveEmptyEntries);
             if(input[0] == "/help")
             {
                 Messages.CommandsHelp();
@@ -422,7 +419,9 @@ public class TCPClient : TransportClient
             {
                 if(input.Length == 2)
                 {
+                    Console.Error.WriteLine($"predtim {username}");
                     username = Messages.Rename(input);
+                    Console.Error.WriteLine($"potom {username}");
                 }
                 else{
                     Console.WriteLine("ERROR: Invalid params, /help to see needed parameters");
@@ -440,7 +439,8 @@ public class TCPClient : TransportClient
         else{
             if(state == ClientStates.States.OPEN || state == ClientStates.States.JOIN)
             {
-                string output = Messages.Message(input, username);
+                Console.Error.WriteLine($"{message} a {username}");
+                string output = Messages.MessageSend(message, username);
                 await ShowMessage(output);
             }
             else

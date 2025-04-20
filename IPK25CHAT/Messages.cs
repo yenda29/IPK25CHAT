@@ -12,8 +12,7 @@ class Messages
 
     public static string[] ErrorMessage(string message)
     {
-        //??reg
-        Match content = Regex.Match(message, @"^ERR FROM ([\x21-\x7E]{1,20}) IS ([\x20-\x7E\x0A]{1,60000})?$");
+        Match content = Regex.Match(message, @"^ERR FROM ([\x21-\x7E]{1,20}) IS ([\x20-\x7E\x0A]{1,60000})?$", RegexOptions.IgnoreCase);
         if (content.Success)
         {
             return new string[] { "ERR", content.Groups[1].Value, content.Groups[2].Value };
@@ -22,7 +21,7 @@ class Messages
     }
     public static string[] ByeMessage(string message)
     {
-        Match content = Regex.Match(message, @"^BYE FROM ([\x21-\x7E]{1,20})?$");
+        Match content = Regex.Match(message, @"^BYE FROM ([\x21-\x7E]{1,20})?$", RegexOptions.IgnoreCase);
         if (content.Success)
         {
             return new string[] { "BYE", content.Groups[1].Value};
@@ -32,18 +31,17 @@ class Messages
 
     public static string[] ReplyMessage(string message)
     {
-        Match content = Regex.Match(message, @"^REPLY (OK|NOK) IS ([\x20-\x7E\x0A]{1,60000})$");
+        Match content = Regex.Match(message, @"^REPLY (OK|NOK) IS ([\x20-\x7E\x0A]{1,60000})$", RegexOptions.IgnoreCase);
         if (content.Success)
         {
-            return new string[] { "REPLY", content.Groups[1].Value, content.Groups[2].Value };
+            return new string[] { "REPLY", content.Groups[1].Value.ToUpper(), content.Groups[2].Value };
         }
         return new string[] { "UNKNOWN", "", "" };
     }
 
     public static string[] MsgMessage(string message)
     {
-        //??
-        Match content = Regex.Match(message, @"^MSG FROM ([\x21-\x7E]{1,20}) IS ([\x20-\x7E\x0A]{1,60000})?$");
+        Match content = Regex.Match(message, @"^MSG FROM ([\x21-\x7E]{1,20}) IS ([\x20-\x7E\x0A]{1,60000})$", RegexOptions.IgnoreCase);
         if (content.Success)
         {
             return new string[] { "MSG", content.Groups[1].Value, content.Groups[2].Value };
@@ -80,7 +78,7 @@ class Messages
         byte [] byteSecret = Encoding.UTF8.GetBytes(input[2]);
         int msgSize = 1 + 2 + byteUsername.Length + 1 + byteDisplayName.Length + 1 + byteSecret.Length + 1;
         byte [] msg = new byte[msgSize];
-        msg[0] = 0x02; // message type
+        msg[0] = 0x02;
         Buffer.BlockCopy(byteMsgId, 0, msg, 1, 2);
         Buffer.BlockCopy(byteUsername, 0, msg, 3, byteUsername.Length);
         Buffer.BlockCopy(byteDisplayName, 0, msg, 3 + byteUsername.Length + 1, byteDisplayName.Length);
@@ -99,7 +97,7 @@ class Messages
         byte [] byteDisplayName = Encoding.UTF8.GetBytes(username);
         int msgSize = 1 + 2 + byteChannelID.Length + 1 + byteDisplayName.Length + 1;
         byte [] msg = new byte[msgSize];
-        msg[0] = 0x03; // message type
+        msg[0] = 0x03;
         Buffer.BlockCopy(byteMsgId, 0, msg, 1, 2);
         Buffer.BlockCopy(byteChannelID, 0, msg, 3, byteChannelID.Length);
         Buffer.BlockCopy(byteDisplayName, 0, msg, 3 + byteChannelID.Length + 1, byteDisplayName.Length);
@@ -116,9 +114,8 @@ class Messages
         byte[] byteMsgId = MessageIdConvertor(msgId);
         byte [] byteDisplayName = Encoding.UTF8.GetBytes(username); 
         int msgSize = 1 + 2 + byteDisplayName.Length + 1;
-        //message creation
         byte [] msg = new byte[msgSize];
-        msg[0] = 0xFF; // message type
+        msg[0] = 0xFF;
         Buffer.BlockCopy(byteMsgId, 0, msg, 1, 2);
         Buffer.BlockCopy(byteDisplayName, 0, msg, 3, byteDisplayName.Length);
         return msg;
@@ -140,9 +137,8 @@ class Messages
         byte [] byteDisplayName = Encoding.UTF8.GetBytes(username); 
         byte [] byteMessageContent = Encoding.UTF8.GetBytes(content);
         int msgSize = 1 + 2 + byteDisplayName.Length + 1 + byteMessageContent.Length + 1;
-        //message creation
         byte [] msg = new byte[msgSize];
-        msg[0] = 0xFE; // message type
+        msg[0] = 0xFE; 
         Buffer.BlockCopy(byteMsgId, 0, msg, 1, 2);
         Buffer.BlockCopy(byteDisplayName, 0, msg, 3, byteDisplayName.Length);
         Buffer.BlockCopy(byteMessageContent, 0, msg, 3 + byteDisplayName.Length + 1, byteMessageContent.Length);
@@ -165,9 +161,8 @@ class Messages
         byte [] byteDisplayName = Encoding.UTF8.GetBytes(username); 
         byte [] byteMessageContent = Encoding.UTF8.GetBytes(input);
         int msgSize = 1 + 2 + byteDisplayName.Length + 1 + byteMessageContent.Length + 1;
-        //message creation
         byte [] msg = new byte[msgSize];
-        msg[0] = 0x04; // message type
+        msg[0] = 0x04; 
         Buffer.BlockCopy(byteMsgId, 0, msg, 1, 2);
         Buffer.BlockCopy(byteDisplayName, 0, msg, 3, byteDisplayName.Length);
         Buffer.BlockCopy(byteMessageContent, 0, msg, 3 + byteDisplayName.Length + 1, byteMessageContent.Length);
@@ -212,6 +207,19 @@ class Messages
         }
         return input[1];
     }
+    public static string MessageSend(string input, string username)
+    {
+        if(username.Length > 20 || !UsernameRegex.IsMatch(username))
+        {
+            throw new ArgumentException("ERROR: Length of display name can be max 20 and contain only printable ASCII characters");
+        }
+        if(input.Length > 60000)
+        {
+            Console.WriteLine("ERROR: Length of message can be max 60000, truncating...");
+            input = input.Substring(0, 60000);
+        }
+        return $"MSG FROM {username} IS {input}";
+    }
 
     public static string Message(string[] input, string username)
     {
@@ -219,12 +227,12 @@ class Messages
         {
             throw new ArgumentException("ERROR: Length of display name can be max 20 and contain only printable ASCII characters");
         }
-        if(input[0].Length > 60000)
+        if(input[1].Length > 60000)
         {
             Console.WriteLine("ERROR: Length of message can be max 60000, truncating...");
-            input[0] = input[0].Substring(0, 60000);
+            input[1] = input[1].Substring(0, 60000);
         }
-        return $"MSG FROM {username} IS {input[0]}";
+        return $"MSG FROM {username} IS {input[1]}";
     }
     private static UInt16 MessageIdParser(byte [] byteMsgId){
         if (BitConverter.IsLittleEndian)
@@ -267,7 +275,6 @@ class Messages
                     Buffer.BlockCopy(input, 4, refBytes, 0, 2);
                     parsed.refMsgId= MessageIdParser(refBytes);
                     parsed.content = MessageContent(input,6);
-                    Console.Error.WriteLine($"Recived REPLY: ID:{parsed.refMsgId} content:{parsed.content}");
 
                     parsed.confirm = true;
                 break;
@@ -294,7 +301,6 @@ class Messages
                     parsed.msgId = MessageIdParser(msgBytes);
                     parsed.username = MessageContent(input,3);
                     parsed.content = MessageContent(input,3 + parsed.username.Length + 1);
-                    Console.Error.WriteLine($"Recived message: FROM:{parsed.username} content:{parsed.content}");
                     parsed.confirm = true;
                 break;
                 case ClientStates.MessageTypes.PING:
@@ -309,7 +315,6 @@ class Messages
                     parsed.msgId = MessageIdParser(msgBytes);
                     parsed.username = MessageContent(input,3);
                     parsed.content = MessageContent(input,3 + parsed.username.Length + 1);
-                    Console.Error.WriteLine($"Recived message: FROM:{parsed.username} content:{parsed.content}");
                     parsed.confirm = true;
                 break;
                 case ClientStates.MessageTypes.BYE:
@@ -352,8 +357,7 @@ class Messages
         Console.Error.WriteLine($"CREATING CONFIRM FOR: ID:{msgId}");
         byte[] byteMsgId = MessageIdConvertor(msgId);
         byte [] msg = new byte[3];
-        //message creation
-        msg[0] = 0x00; // message type
+        msg[0] = 0x00; 
         Buffer.BlockCopy(byteMsgId, 0, msg, 1, 2);
         return msg;
     }
