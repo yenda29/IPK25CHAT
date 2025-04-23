@@ -69,18 +69,27 @@ Here are few test examples that I've run on local pseudo-server with command `nc
 
 ### First test
 Client input in terminal:
+
 ![First client input](src/img/client1.jpg)
+
 Server output in terminal:
+
 ![First client input](src/img/server1.jpg)
 ### Second test
 Client input in terminal:
+
 ![First client input](src/img/client2.jpg)
+
 Server output in terminal:
+
 ![First client input](src/img/server2.jpg)
 ### Third test
 Client input in terminal:
+
 ![First client input](src/img/client3.jpg)
+
 Server output in terminal:
+
 ![First client input](src/img/server3.jpg)
 
 ## Bibliography
