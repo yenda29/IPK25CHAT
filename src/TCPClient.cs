@@ -17,6 +17,11 @@ public class TCPClient : TransportClient
         options = parsed;
     }
 
+
+    /*
+    * Asynchronously connects to the chat server using the configured options.
+    * Initializes TcpClient, network stream, and stream reader/writer.
+    */
     public async Task Connect()
     {
         tcpClient = new TcpClient();
@@ -33,6 +38,12 @@ public class TCPClient : TransportClient
         reader = new StreamReader(stream, Encoding.ASCII);
     }
 
+    /*
+    * Main loop of the chat client.
+    * Starts two parallel tasks: one for handling server messages and one for user commands.
+    * Cancels both tasks when one of them completes.
+    * Handles cancellation and other exceptions gracefully.
+    */
     public async Task Loop()
     {
         Console.Error.WriteLine("Connected to server. Type /help for available commands.");
@@ -57,7 +68,11 @@ public class TCPClient : TransportClient
         }
     }
 
-
+    /*
+    * Sets up the entire chat session lifecycle.
+    * Connects to the server, enters the main loop, and disconnects afterward.
+    * Handles any exceptions that occur during the process and ensures disconnection.
+    */
     public async Task Setup()
     {
         try{
@@ -70,7 +85,12 @@ public class TCPClient : TransportClient
             await DisconnectAsync();
         }
     }
-
+    /*
+    * Asynchronously reads data from the server and processes incoming messages.
+    * Continuously listens for new messages, handles cancellations, and processes each message.
+    * If cancellation is requested, a "bye" message is sent to the server.
+    * Handles exceptions related to message reading and processing.
+    */
     public async Task ServerData(CancellationToken token)
     {
         
@@ -102,6 +122,12 @@ public class TCPClient : TransportClient
         }
         
     }
+    /*
+    * Asynchronously processes server messages based on the current client state.
+    * Handles messages.
+    * Performs state transitions and displays appropriate error or success messages.
+    * Ensures that unexpected or invalid messages are properly handled and the client disconnects if necessary.
+    */
     public async Task ServerMessage(string message)
     {
         Console.Error.WriteLine($"Server message: {message}");
@@ -278,6 +304,11 @@ public class TCPClient : TransportClient
                 return;
         }
     }
+    /*
+    * Constructs an error message formatted for server communication.
+    * Validates the length of the display name and content.
+    * Returns a formatted error message
+    */
     public string ConstructErrorMessage(string displayName, string content)
     {
         if(displayName.Length > 20)
@@ -291,6 +322,10 @@ public class TCPClient : TransportClient
         }
         return $"ERR FROM {displayName} IS {content}\r\n";
     }
+    /*
+    * Constructs a "BYE" message to notify the server of disconnection.
+    * Validates the length of the display name.
+    */
     public string ConstructByeMessage(string displayName)
     {
         if(displayName.Length > 20)
@@ -299,6 +334,11 @@ public class TCPClient : TransportClient
         }
         return $"BYE FROM {displayName}\r\n";
     }
+    /*
+    * Sends a message to the connected server.
+    * Validates the connection and writer initialization.
+    * If the client is not connected or writer is uninitialized, an exception is thrown.
+    */
     public async Task ShowMessage(string message)
     {
         if (tcpClient == null || !tcpClient.Connected)
@@ -315,6 +355,10 @@ public class TCPClient : TransportClient
         await writer.WriteAsync(message);
         await writer.FlushAsync();
     }
+    /*
+    * Continuously listens for user commands and processes them.
+    * Processes commands or sends a "BYE" message if no input is provided.
+    */
     public async Task  UserCommands(CancellationToken token)
     {
         try{
@@ -347,7 +391,11 @@ public class TCPClient : TransportClient
             Console.WriteLine($"ERROR: {exception.Message}");
         }
     }
-    
+    /*
+    * Authenticates the user by sending an authentication message to the server.
+    * Sends the authentication message using `ShowMessage`.
+    * If the state is not START or AUTH, logs an error.
+    */
     public async Task Authenticate(string[] input)
     {
         if(state == ClientStates.States.START || state == ClientStates.States.AUTH)
@@ -370,6 +418,10 @@ public class TCPClient : TransportClient
             return;
         }
     }
+    /*
+    * Joins a chatroom after verifying that the current state is OPEN.
+    * If the state is not OPEN, an error is logged.
+    */
     public async Task Join(string[] input)
     {
         if(state == ClientStates.States.OPEN)
@@ -390,7 +442,11 @@ public class TCPClient : TransportClient
             return;
         }
     }
-
+    /*
+    * Processes a user command. Commands that start with '/' are handled here.
+    * If the message is a command, it splits the input and calls the appropriate method.
+    * If the message is not a command, it sends a message to the server if the state is OPEN or JOIN.
+    */
     public async Task ProcessCommand(string message)
     {
         
@@ -456,7 +512,9 @@ public class TCPClient : TransportClient
             }
         }
     }
-    
+    /*
+    * Disconnects the client by canceling the operation, disposing of resources, and resetting necessary objects.
+    */
     public async Task DisconnectAsync()
     {
         cancel?.Cancel();

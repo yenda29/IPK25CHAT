@@ -1,3 +1,6 @@
+/* 
+ * The interface contains methods for managing the client's lifecycle, handling server communication, and processing user commands.
+ */
 public interface TransportClient
 {
     Task Connect();

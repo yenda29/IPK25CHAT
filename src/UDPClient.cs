@@ -15,7 +15,10 @@ public class UDPClient : TransportClient
     private UInt16 msg = 0;
     private ConcurrentDictionary<ushort, TaskCompletionSource<bool>> confirmations;
     private bool end = false;
-
+    /*
+    * Constructor for the UDPClient class.
+    * Initializes the UDP client with options, resolving the server host to an IP address.
+    */
     public UDPClient(ChatOptions parsed)
     {
         options = parsed;
@@ -26,7 +29,10 @@ public class UDPClient : TransportClient
         current = server;
         confirmations = new ConcurrentDictionary<ushort, TaskCompletionSource<bool>>();
     }
-
+    /*
+    * Connects the UDP client to the network.
+    * Initializes a new UdpClient instance and binds it to any available IP address and a random port.
+    */
     public Task Connect()
     {
         udpClient = new UdpClient();
@@ -34,7 +40,10 @@ public class UDPClient : TransportClient
         udpClient.Client.Bind(new IPEndPoint(IPAddress.Any, 0));
         return Task.CompletedTask;
     }
-
+    /*
+    * Asynchronously listens for data from the server.
+    * Continuously receives data from the server as long as the token is not canceled.
+    */
     public async Task ServerData(CancellationToken token)
     {
         try{
@@ -78,7 +87,11 @@ public class UDPClient : TransportClient
             Console.WriteLine($"ERROR: {exception.Message}");
         }
     }
-
+    /* 
+    * The ServerMessage method processes incoming UDP messages.
+    * If the UDP client is initialized, it creates a confirmation message for the received message ID and sends it to the server.
+    * Based on the message type and the client's current state, it performs various actions.
+    */
     public async Task ServerMessage(byte[] buffer)
     {
         if (buffer.Length >= 3)
@@ -302,6 +315,11 @@ public class UDPClient : TransportClient
         } 
     }
 
+    /* 
+    * The ShowMessage method sends a message to the server and waits for a confirmation.
+    * A confirmation is expected, and the method will retransmit the message if confirmation is not received, 
+    * up to a maximum number of attempts.
+    */
     public async Task ShowMessage(byte[] message)
     {
         string display = Encoding.UTF8.GetString(message);
@@ -359,6 +377,12 @@ public class UDPClient : TransportClient
             confirmations.TryRemove(id, out _);
         }
     }
+    /* 
+    * The ProcessCommand method processes user input for commands.
+    * It checks if the message is a command (starting with "/").
+    * If it's a command, it processes known commands such as /help, /auth, /join, /rename, and /exit.
+    * If it's a regular message, it is sent to the server.
+    */
     public async Task ProcessCommand(string message)
     {        
         if(message == null)
@@ -425,6 +449,10 @@ public class UDPClient : TransportClient
             }
         }
     }
+    /* 
+    * The Join method attempts to join a chat or service.
+    * The method can only be invoked when the client is in the OPEN state.
+    */
     public async Task Join(string[] input)
     {
         if(state == ClientStates.States.OPEN)
@@ -445,6 +473,10 @@ public class UDPClient : TransportClient
             return;
         }
     }
+    /* 
+    * The Authenticate method is used to authenticate the user.
+    * The method can only be invoked when the client is in the START or AUTH state.
+    */
     public async Task Authenticate(string[] input)
     {
         if(state == ClientStates.States.START || state == ClientStates.States.AUTH)
@@ -466,6 +498,11 @@ public class UDPClient : TransportClient
             return;
         }
     }
+    /* 
+    * The UserCommands method handles user input from the console in a loop.
+    * It continuously listens for user input until the operation is canceled or an error occurs.
+    * If the input is a valid command, it is processed using the ProcessCommand method.
+    */
     public async Task UserCommands(CancellationToken token)
     {
        try
@@ -495,7 +532,10 @@ public class UDPClient : TransportClient
             Console.WriteLine($"ERROR: {ex.Message}");
         }
     }
-
+    /* 
+    * The Loop method coordinates the execution of the server and user command tasks.
+    * The method starts two tasks: one for the server-side processing (`ServerData`) and one for user commands (`UserCommands`).
+    */
     public async Task Loop()
     {
         state = ClientStates.States.START;
@@ -523,6 +563,10 @@ public class UDPClient : TransportClient
         }
         
     }
+    /* 
+    * The Confirm method sends a confirmation message for a given message ID.
+    * It constructs a UDP confirmation message using the provided message ID.
+    */
     public async Task Confirm(UInt16 msgId)
     {
         byte[] msg = Messages.UDPConfirm(msgId);
@@ -537,6 +581,10 @@ public class UDPClient : TransportClient
         }
         await udpClient.SendAsync(msg, msg.Length, current);
     }
+    /* 
+    * The IsClientUsable method checks if the UDP client is in a valid state and ready for use.
+    * It verifies if the UDP client and its associated socket are initialized and have a valid handle.
+    */
     private bool IsClientUsable()
     {
         try
@@ -548,6 +596,11 @@ public class UDPClient : TransportClient
             return false;
         }
     }
+    /* 
+    * The Setup method handles the entire setup process by connecting the client, running the main loop, and disconnecting.
+    * It first attempts to establish a connection with the server.
+    * After that, it runs the main loop (`Loop`), handling server communication and user input.
+    */
     public async Task Setup()
     {
         try{
@@ -560,7 +613,9 @@ public class UDPClient : TransportClient
             await DisconnectAsync();
         }
     }
-
+    /*
+    * Disconnects the client by canceling the operation, disposing of resources, and resetting necessary objects.
+    */
     public async Task DisconnectAsync()
     {
         try{

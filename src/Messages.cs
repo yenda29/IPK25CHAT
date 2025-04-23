@@ -73,6 +73,7 @@ class Messages
     }
     /*
     * Parses an AUTH message for UDP
+    * Checks the validity of the input and returns a byte array
     */
     public static byte[] UDPAuthMessage(UInt16 msgId, string[] input)
     {
@@ -124,6 +125,7 @@ class Messages
     }
     /*
     * Parses a JOIN message for UDP
+    * Checks the validity of the input and returns a byte array
     */
     public static byte[] UDPJoinMessage(UInt16 msgId, string[] input, string username)
     {
@@ -159,6 +161,7 @@ class Messages
     }
     /*
     * Parses a BYE message for UDP
+    * Checks the validity of the input and returns a byte array
     */
     public static byte[] UDPByeMessage(UInt16 msgId, string username)
     {
@@ -185,6 +188,7 @@ class Messages
     }
     /*
     * Parses an ERR message for UDP
+    * Checks the validity of the input and returns a byte array
     */
     public static byte[] UDPErrMessage(UInt16 msgId, string username, string content)
     {
@@ -225,6 +229,7 @@ class Messages
     }
     /*
     * Parses a message for UDP
+    * Checks the validity of the input and returns a byte array
     */
     public static byte[] UDPMessage(UInt16 msgId, string input, string username)
     {
@@ -264,6 +269,7 @@ class Messages
     }
     /*
     * Parses an AUTH message
+    * Checks the validity of the input and returns a byte array
     */
     public static string AuthMessage(string[] input)
     {
@@ -284,6 +290,7 @@ class Messages
 
     /*
     * Parses an AUTH message
+    * Checks the validity of the input and returns a string
     */
     public static string JoinMessage(string[] input, string username)
     {
@@ -294,6 +301,9 @@ class Messages
         return $"JOIN {input[1]} AS {username}\r\n";
     }
 
+    /* 
+    * Validates and processes a new display name from the given input array, returns a string
+    */
     public static string Rename(string[] input)
     {
         if(input[1].Length > 20)
@@ -307,6 +317,10 @@ class Messages
         }
         return input[1];
     }
+    /*
+    * Composes a message string for sending
+    * Validates the message and username of sender
+    */
     public static string MessageSend(string input, string username)
     {
         if(username.Length > 20 || !UsernameRegex.IsMatch(username))
@@ -321,6 +335,10 @@ class Messages
         return $"MSG FROM {username} IS {input}";
     }
 
+    /*
+    * Composes a message string for sending
+    * Validates the message and username of sender
+    */
     public static string Message(string[] input, string username)
     {
         if(username.Length > 20 || !UsernameRegex.IsMatch(username))
@@ -334,6 +352,10 @@ class Messages
         }
         return $"MSG FROM {username} IS {input[1]}";
     }
+
+    /*
+    * Checks the correct format of byte array, ensures big endian interpretation
+    */
     public static ushort CheckEndian(ReadOnlySpan<byte> span)
     {
         if (BitConverter.IsLittleEndian)
@@ -345,7 +367,10 @@ class Messages
             return BitConverter.ToUInt16(span);
         }
     }
-
+    /*
+    * Parses a UDP message from raw byte input into a structured ParsedMessage object
+    * ParsedMessage contains the type of message, message ID, reference message ID, and other relevant fields
+    */
     public static ParsedMessage UDPMessage(byte[] input)
     {
         if(input.Length >= 3)
@@ -424,6 +449,9 @@ class Messages
             throw new ArgumentException("ERROR: Malformed format of message");
         }
     }
+    /*
+    * Parses a null-terminated UTF-8 encoded string from a byte array, starting at a given index.
+    */
     public static string MessageContent(byte[] input,int index)
     {
         int end = index;
@@ -432,10 +460,12 @@ class Messages
             end++;
         }
         int length = end - index;
-        byte[] bytes = new byte[length];
         string result = Encoding.UTF8.GetString(input, index, length);
         return result;  
     }
+    /*
+    * Converts a 16-bit unsigned message ID to a big-endian byte array
+    */
     private static byte [] MessageIdConvertor(UInt16 msgId){
         byte [] byteMsgId = BitConverter.GetBytes(msgId);
         if (BitConverter.IsLittleEndian)
@@ -444,7 +474,9 @@ class Messages
         }
         return byteMsgId;
     }
-
+    /*
+    * Constructs a UDP CONFIRM message with a given message ID
+    */
     public static byte[] UDPConfirm(UInt16 msgId)
     {
         byte[] byteMsgId = MessageIdConvertor(msgId);
