@@ -9,7 +9,7 @@ using System.Net;
 public class ChatOptions
 {
     public string ServerHost { get; set; } = string.Empty;
-    public ushort ServerPort { get; set; } = 4657;
+    public ushort ServerPort { get; set; } = 4567;
     public string TransportProtocol { get; set; } = string.Empty;
     public ushort UDPTimeout { get; set; } = 250;
     public byte UDPRetransmissions { get; set; } = 3;
