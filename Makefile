@@ -1,7 +1,7 @@
 TARGET=ipk25chat-client
 RUNTIME=linux-x64
 OUTPUT_DIR=.
-SRC_DIR=IPK25CHAT
+SRC_DIR=src
 
 all: build
 

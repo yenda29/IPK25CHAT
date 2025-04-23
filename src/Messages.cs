@@ -1,7 +1,10 @@
 using System;
 using System.Text.RegularExpressions;
 using System.Text;
-
+/*
+*Class to provide message parsing and formatting for a chat application.
+*Includes methods for creating and parsing messages, as well as validating input.
+*/
 class Messages
 {
     private static readonly Regex IdRegex = new Regex(@"^[a-zA-Z0-9_-]{1,20}$");
@@ -10,6 +13,10 @@ class Messages
     private static readonly Regex ContentRegex = new Regex(@"^[\x20-\x7E\x0A]{1,60000}$");
     private static readonly Regex UsernameRegex = new Regex(@"^[a-zA-Z0-9_-]{1,20}$");
 
+    
+    /*
+    * Parses an ERR message and returns printable message or unknown if invalid input
+    */
     public static string[] ErrorMessage(string message)
     {
         Match content = Regex.Match(message, @"^ERR FROM ([\x21-\x7E]{1,20}) IS ([\x20-\x7E\x0A]{1,60000})?$", RegexOptions.IgnoreCase);
@@ -19,6 +26,9 @@ class Messages
         }
         return new string[] { "UNKNOWN", "", "" };
     }
+    /*
+    * Parses an BYE message and returns printable message or unknown if invalid input
+    */
     public static string[] ByeMessage(string message)
     {
         Match content = Regex.Match(message, @"^BYE FROM ([\x21-\x7E]{1,20})?$", RegexOptions.IgnoreCase);
@@ -28,7 +38,9 @@ class Messages
         }
         return new string[] { "UNKNOWN", ""};
     }
-
+    /*
+    * Parses an REPLY message and returns printable message or unknown if invalid input
+    */
     public static string[] ReplyMessage(string message)
     {
         Match content = Regex.Match(message, @"^REPLY (OK|NOK) IS ([\x20-\x7E\x0A]{1,60000})$", RegexOptions.IgnoreCase);
@@ -38,7 +50,9 @@ class Messages
         }
         return new string[] { "UNKNOWN", "", "" };
     }
-
+    /*
+    * Parses an MSG message and returns printable message or unknown if invalid input
+    */
     public static string[] MsgMessage(string message)
     {
         Match content = Regex.Match(message, @"^MSG FROM ([\x21-\x7E]{1,20}) IS ([\x20-\x7E\x0A]{1,60000})$", RegexOptions.IgnoreCase);
@@ -57,6 +71,9 @@ class Messages
         Console.WriteLine("/rename {DisplayName} - Locally changes the display name");
         Console.WriteLine("/exit - Exits");
     }
+    /*
+    * Parses an AUTH message for UDP
+    */
     public static byte[] UDPAuthMessage(UInt16 msgId, string[] input)
     {
         if (input[1].Length > 20 || !UsernameRegex.IsMatch(input[1]))
@@ -105,6 +122,9 @@ class Messages
 
         return msg;
     }
+    /*
+    * Parses a JOIN message for UDP
+    */
     public static byte[] UDPJoinMessage(UInt16 msgId, string[] input, string username)
     {
         if(username.Length > 20 || !UsernameRegex.IsMatch(username))
@@ -137,6 +157,9 @@ class Messages
 
         return msg;
     }
+    /*
+    * Parses a BYE message for UDP
+    */
     public static byte[] UDPByeMessage(UInt16 msgId, string username)
     {
         if(username.Length > 20 || !UsernameRegex.IsMatch(username))
@@ -160,6 +183,9 @@ class Messages
         msg[3 + byteDisplayName.Length] = 0;
         return msg;
     }
+    /*
+    * Parses an ERR message for UDP
+    */
     public static byte[] UDPErrMessage(UInt16 msgId, string username, string content)
     {
         if(username.Length > 20 || !UsernameRegex.IsMatch(username))
@@ -197,7 +223,9 @@ class Messages
         msg[contentStart + byteMessageContent.Length] = 0;
         return msg;
     }
-    
+    /*
+    * Parses a message for UDP
+    */
     public static byte[] UDPMessage(UInt16 msgId, string input, string username)
     {
         if(username.Length > 20 || !UsernameRegex.IsMatch(username))
@@ -234,6 +262,9 @@ class Messages
         msg[messageStart + byteMessageContent.Length] = 0;
         return msg;
     }
+    /*
+    * Parses an AUTH message
+    */
     public static string AuthMessage(string[] input)
     {
         if(input[1].Length > 20 || !UsernameRegex.IsMatch(input[1]))
@@ -251,6 +282,9 @@ class Messages
         return $"AUTH {input[1]} AS {input[3]} USING {input[2]}\r\n";
     }
 
+    /*
+    * Parses an AUTH message
+    */
     public static string JoinMessage(string[] input, string username)
     {
         if(username.Length > 20 || !UsernameRegex.IsMatch(username))

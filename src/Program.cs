@@ -9,7 +9,11 @@ class Program{
 
     static TCPClient? tcpCommunication;
 
-    
+    /**
+     * Main method to start the chat application.
+     * Parses command line arguments and sets up the communication protocol (TCP or UDP).
+     * Handles graceful termination on Ctrl+C.
+     */
     static async Task Main(string[] args){
         ArgParser parser = new ArgParser();
         ChatOptions options = parser.Parse(args);

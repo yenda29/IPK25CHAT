@@ -87,8 +87,13 @@ public class UDPClient : TransportClient
             if(udpClient != null)
             {
                 byte[] confirm = Messages.UDPConfirm(msgId);
+                if (!IsClientUsable())
+                {
+                    Console.WriteLine("ERROR: UDP Client not available (disposed).");
+                    return;
+                }
                 await udpClient.SendAsync(confirm, confirm.Length, server);
-                Console.Error.WriteLine($"Sent CONFIRM for MsgId: {msgId}");
+                Console.Error.WriteLine($"Sent CONFIRM for message with id: {msgId}");
             }
         }
         
@@ -127,7 +132,6 @@ public class UDPClient : TransportClient
                 case ClientStates.States.START:
                     if(message.type == ClientStates.MessageTypes.ERR)
                     {
-                        Console.WriteLine($"ERROR FROM {message.display}: {message.content}");
                         state = ClientStates.States.END;
                         await DisconnectAsync();
                     }
@@ -318,6 +322,11 @@ public class UDPClient : TransportClient
             try
             {
                 try {
+                    if (!IsClientUsable())
+                    {
+                        Console.WriteLine("ERROR: UDP Client not available (disposed).");
+                        return;
+                    }
                     await udpClient.SendAsync(message, message.Length, current);
                     Console.Error.WriteLine($"Message ID {id} sent, waiting for confirmation...");
                     var timeout = Task.Delay(options.UDPTimeout);
@@ -508,6 +517,10 @@ public class UDPClient : TransportClient
         {
             Console.WriteLine($"ERROR: {exception.Message}");
         }
+        finally
+        {
+            udpClient?.Dispose(); // tady už je bezpečné zlikvidovat klienta
+        }
         
     }
     public async Task Confirm(UInt16 msgId)
@@ -517,7 +530,23 @@ public class UDPClient : TransportClient
         {
             throw new InvalidOperationException("UDP Client isn't connected");
         }
+        if (!IsClientUsable())
+        {
+            Console.WriteLine("ERROR: UDP Client not available (disposed).");
+            return;
+        }
         await udpClient.SendAsync(msg, msg.Length, current);
+    }
+    private bool IsClientUsable()
+    {
+        try
+        {
+            return udpClient != null && udpClient.Client != null && udpClient.Client.Handle != IntPtr.Zero;
+        }
+        catch
+        {
+            return false;
+        }
     }
     public async Task Setup()
     {
@@ -534,11 +563,26 @@ public class UDPClient : TransportClient
 
     public async Task DisconnectAsync()
     {
-        cancel?.Cancel();
-        cancel?.Dispose();
-        cancel = new CancellationTokenSource();
-        udpClient?.Dispose();
+        try{
+            if (udpClient == null){
+                Console.Error.WriteLine("Tried to disconnect from disconnected client");
+                return;
+            }
+            udpClient.Close();
+            Console.Error.WriteLine("Disconnected");
+
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"ERROR: {ex.Message}");
+        }
+        finally
+        {
+            cancel?.Dispose();
+        }
         await Task.CompletedTask;
+        Environment.Exit(0);
+        
     }
 
     public void Terminate()

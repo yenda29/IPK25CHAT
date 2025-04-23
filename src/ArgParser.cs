@@ -1,6 +1,11 @@
 using System;
 using System.Net;
 
+/**
+* Class to parse command line arguments for a chat application.
+* Prints help message if -h is provided.
+* Validates the transport protocol, server host, port, UDP timeout, and retransmissions.
+*/
 public class ArgParser
 {
     public ChatOptions Parse(string[] args)
