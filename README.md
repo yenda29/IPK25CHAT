@@ -69,28 +69,79 @@ Here are few test examples that I've run on local pseudo-server with command `nc
 
 ### First test
 Client input in terminal:
+<pre>./ipk25chat-client -t tcp -p 4567 -s 127.0.0.1
+Connected to server. Type /help for available commands.
+/auth a b c
+Server message: REPLY OK IS ano
+Action Success: ano
+/rename kvetinka
+test test
+/exit
+Exiting...
+Server message: BYE</pre>
 
-![First client input](src/img/client1.jpg)
+Server output in terminal using `nc -C -l 127.0.0.1 4567`:
+<pre>AUTH a AS c USING b
+REPLY OK IS ano
+MSG FROM kvetinka IS test test
+BYE FROM kvetinka
+BYE
+BYE FROM kvetinka</pre>
 
-Server output in terminal:
-
-![First client input](src/img/server1.jpg)
 ### Second test
 Client input in terminal:
+<pre>./ipk25chat-client -t tcp -p 4567 -s 127.0.0.1
+Connected to server. Type /help for available commands.
+ahoj
+ERROR: unknown command, use /help
+/auth a b c
+/auth y o p
+/authh y o k
+ERROR: unknown command, /help to see needed parameters
+/joinn j
+ERROR: unknown command, /help to see needed parameters
+/renamee f
+ERROR: unknown command, /help to see needed parameters
+/helppp
+ERROR: unknown command, /help to see needed parameters
+/help
+Commands:
+/help - prints out help
+/auth {Username} {Secret} {DisplayName} - Sends AUTH message with the data provided
+/join {ChannelID} - Sends JOIN message with channel name
+/rename {DisplayName} - Locally changes the display name
+/exit - Exits
+/exit
+Exiting...</pre>
 
-![First client input](src/img/client2.jpg)
-
-Server output in terminal:
-
-![First client input](src/img/server2.jpg)
+Server output in terminal using `nc -C -l 127.0.0.1 4567`:
+<pre>AUTH a AS c USING b
+AUTH y AS p USING o
+BYE FROM p</pre>
 ### Third test
 Client input in terminal:
+<pre>./ipk25chat-client -t tcp -p 4567 -s 127.0.0.1
+Connected to server. Type /help for available commands.
+/aUtH jedna dva tri
+ERROR: unknown command, /help to see needed parameters
+/auth jedna dva tri
+Server message: rEplY Ok IS Vitej
+Action Success: Vitej
+Hiiii
+/rEnAMe deset
+ERROR: unknown command, /help to see needed parameters
+/rename pekny
+Ahoj
+Server message: ByE
+Exiting...
+ERROR: Client not connected</pre>
 
-![First client input](src/img/client3.jpg)
-
-Server output in terminal:
-
-![First client input](src/img/server3.jpg)
+Server output in terminal using `nc -C -l 127.0.0.1 4567`:
+<pre>AUTH jedna AS tri USING dva
+rEplY Ok IS Vitej
+MSG FROM tri IS Hiiii
+MSG FROM pekny IS Ahoj
+ByE</pre>
 
 ## Bibliography
 [1] Ed, W. E. (2022, August 1). RFC 9293: Transmission Control Protocol (TCP). IETF Datatracker. https://datatracker.ietf.org/doc/html/rfc9293
